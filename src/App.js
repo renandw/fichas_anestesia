@@ -9,6 +9,8 @@ import SignIn from './components/auth/SignIn';
 import SignUp from './components/auth/SignUp';
 import ForgotPassword from './components/auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
+import NewSurgery from './pages/NewSurgery';
+import SurgeryDetail from './pages/SurgeryDetail';
 import NewForm from './pages/NewForm';
 import FormsList from './pages/FormsList';
 import Statistics from './pages/Statistics';
@@ -37,9 +39,11 @@ function App() {
               <ProtectedRoute>
                 <Layout />
               </ProtectedRoute>
-            }>
+            }            >
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="new-surgery" element={<NewSurgery />} />
+              <Route path="surgery/:id" element={<SurgeryDetail />} />
               <Route path="new-form" element={<NewForm />} />
               <Route path="forms" element={<FormsList />} />
               <Route path="statistics" element={<Statistics />} />
