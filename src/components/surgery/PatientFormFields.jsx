@@ -19,7 +19,8 @@ const PatientFormFields = ({
   isLoading = false,
   submitButtonText = "Continuar",
   showTitle = true,
-  mode = "create" // "create" ou "edit"
+  mode = "create",
+  onAutoSave = null
 }) => {
   
   const { register, handleSubmit, formState: { errors }, watch, setValue, control, reset } = useForm({
@@ -160,9 +161,9 @@ const PatientFormFields = ({
   // import cbhpmCodesData from '../../data/cbhpm_codes.json';
   // Por enquanto, usando dados mock até o arquivo JSON ser criado
   const cbhpmCodes = cbhpmCodesData.map(item => ({
-    code: item.codigo,
-    name: item.procedimento,
-    porte: item.porte_anestesico
+    codigo: item.codigo,
+    procedimento: item.procedimento,
+    porte_anestesico: item.porte_anestesico || 'N/A'
   }));
 
   const positionOptions = [
@@ -267,19 +268,14 @@ const PatientFormFields = ({
       setValue(`cbhpmProcedures.${index}.codigo`, selectedProcedure.codigo);
       setValue(`cbhpmProcedures.${index}.procedimento`, selectedProcedure.procedimento);
       setValue(`cbhpmProcedures.${index}.porte_anestesico`, selectedProcedure.porte_anestesico);
-    }
-  };
-
-  // Função para autocompletar CBHPM
-  const handleCbhmpChange = (index, value) => {
-    const selectedProcedure = cbhpmCodes.find(item => 
-      value.startsWith(item.codigo) || value.includes(item.procedimento)
-    );
-    
-    if (selectedProcedure) {
-      setValue(`cbhpmProcedures.${index}.codigo`, selectedProcedure.codigo);
-      setValue(`cbhpmProcedures.${index}.procedimento`, selectedProcedure.procedimento);
-      setValue(`cbhpmProcedures.${index}.porte_anestesico`, selectedProcedure.porte_anestesico);
+      
+      // Trigger AutoSave com delay para garantir que setValue foi processado
+      if (mode === 'edit' && onAutoSave) {
+        setTimeout(() => {
+          const currentData = watch();
+          onAutoSave(currentData);
+        }, 100);
+      }
     }
   };
 
@@ -417,42 +413,77 @@ const PatientFormFields = ({
               </button>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-4">
               {cbhpmFields.map((field, index) => (
-                <div key={field.id} className="flex items-start space-x-3">
-                  <div className="flex-1">
-                    <label className="label">
-                      Código e Procedimento {index === 0 ? '*' : ''}
-                    </label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="Digite código ou nome do procedimento..."
-                      list={`cbhpm-options-${index}`}
-                      {...register(`cbhpmProcedures.${index}.code`, {
-                        required: index === 0 ? 'Pelo menos um procedimento é obrigatório' : false
-                      })}
-                      onChange={(e) => handleCbhpmChange(index, e.target.value)}
-                    />
-                    <datalist id={`cbhpm-options-${index}`}>
-                      {cbhpmCodes.map((item) => (
-                        <option key={item.code} value={`${item.code} - ${item.name}`} />
-                      ))}
-                    </datalist>
-                    {errors.cbhpmProcedures?.[index]?.code && (
-                      <p className="error-text">{errors.cbhpmProcedures[index].code.message}</p>
+                <div key={field.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-1">
+                      <label className="label">
+                        Código e Procedimento {index === 0 ? '*' : ''}
+                      </label>
+                      <input
+  type="text"
+  className="input-field"
+  placeholder="Digite código ou nome do procedimento..."
+  list={`cbhpm-options-${index}`}
+  {...register(`cbhpmProcedures.${index}.codigo`, {
+    required: index === 0 ? 'Pelo menos um procedimento é obrigatório' : false,
+    onBlur: (e) => handleCbhpmChange(index, e.target.value) // Detecta quando sai do campo
+  })}
+/>
+                      <datalist id={`cbhpm-options-${index}`}>
+                        {cbhpmCodes.map((item) => (
+                          <option key={item.codigo} value={`${item.codigo} - ${item.procedimento}`} />
+                        ))}
+                      </datalist>
+                      
+                      {/* Erro de validação */}
+                      {errors.cbhpmProcedures?.[index]?.codigo && (
+                        <p className="error-text">{errors.cbhpmProcedures[index].codigo.message}</p>
+                      )}
+                      
+                      {/* Mostrar procedimento selecionado */}
+                      {watch(`cbhpmProcedures.${index}.procedimento`) && (
+                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-green-800">
+                                ✓ {watch(`cbhpmProcedures.${index}.codigo`)} - {watch(`cbhpmProcedures.${index}.procedimento`)}
+                              </p>
+                              <p className="text-xs text-green-600">
+                                Porte Anestésico: {watch(`cbhpmProcedures.${index}.porte_anestesico`)}
+                              </p>
+                            </div>
+                            {mode === 'edit' && (
+                              <div className="text-xs text-green-600 font-medium">
+                                Salvo automaticamente
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Campos hidden para garantir envio dos dados */}
+                      <input
+                        type="hidden"
+                        {...register(`cbhpmProcedures.${index}.procedimento`)}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`cbhpmProcedures.${index}.porte_anestesico`)}
+                      />
+                    </div>
+                    
+                    {index > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => removeCbhpm(index)}
+                        className="mt-7 p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
-                  
-                  {index > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => removeCbhpm(index)}
-                      className="mt-7 p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
@@ -612,11 +643,11 @@ const PatientFormFields = ({
                 })}
               >
                 <option value="">Selecione o convênio</option>
-                <option value="unimed">Unimed</option>
-                <option value="bradesco">Bradesco Saúde</option>
-                <option value="amil">Amil</option>
-                <option value="sulamerica">SulAmérica</option>
-                <option value="particular">Particular</option>
+                <option value="Unimed">Unimed</option>
+                <option value="Bradesco">Bradesco Saúde</option>
+                <option value="Amil">Amil</option>
+                <option value="Sulamerica">SulAmérica</option>
+                <option value="Particular">Particular</option>
                 <option value="outros">Outros</option>
               </select>
               {errors.insuranceName && (

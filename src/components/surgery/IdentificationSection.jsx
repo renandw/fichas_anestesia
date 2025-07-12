@@ -14,6 +14,21 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+
+  const handleDataChange = (data) => {
+    if (onDataChange) {
+      onDataChange(data);
+    }
+  };
+  
+  const handleAutoSave = async (data) => {
+    try {
+      await autoSave(data);
+    } catch (error) {
+      console.error('Erro no AutoSave:', error);
+    }
+  };
+
   const handleSave = async (data) => {
     setIsSaving(true);
     try {
@@ -299,6 +314,8 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
         }
         showTitle={false}
         mode="edit"
+        onAutoSave={handleAutoSave}
+        onDataChange={handleDataChange}
       />
     </div>
   );

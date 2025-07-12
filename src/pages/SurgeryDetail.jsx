@@ -1,8 +1,16 @@
+// Importações (adicionar a nova seção)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getSurgery, updateSurgery, getActiveSurgeries } from '../services/firestore';
-import { MedicationsSection, VitalSignsSection, IdentificationSection } from '../components/surgery';
+import { 
+  MedicationsSection, 
+  VitalSignsSection, 
+  IdentificationSection, 
+  DescriptionSection, 
+  FichaPreview,
+  PreAnestheticEvaluationSection // NOVA IMPORTAÇÃO
+} from '../components/surgery';
 
 import { 
   ArrowLeft, 
@@ -15,7 +23,9 @@ import {
   FileText,
   Save,
   CheckCircle,
-  CreditCard // NOVO ÍCONE
+  CreditCard,
+  Eye,
+  UserCheck // NOVO ÍCONE PARA AVALIAÇÃO PRÉ-ANESTÉSICA
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -28,7 +38,7 @@ const SurgeryDetail = () => {
   const [activeSurgeries, setActiveSurgeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeSection, setActiveSection] = useState('identification'); // PADRÃO MUDOU PARA identification
+  const [activeSection, setActiveSection] = useState('identification');
 
   // Estados para medicações e sinais vitais
   const [medications, setMedications] = useState([]);
@@ -89,44 +99,42 @@ const SurgeryDetail = () => {
     }
   };
 
-  // Calcular tempo decorrido
+  // Calcular tempo decorrido desde o início clínico da cirurgia
   const getElapsedTime = () => {
-    if (!surgery?.createdAt) return '00:00';
-    
+    const baseTime = surgery?.startTime || surgery?.createdAt;
+    if (!baseTime) return '00:00';
+
     let startDate;
-    
-    // Tratar diferentes formatos de timestamp do Firebase
-    if (surgery.createdAt.seconds) {
-      // Firestore Timestamp
-      startDate = new Date(surgery.createdAt.seconds * 1000);
-    } else if (surgery.createdAt.toDate) {
-      // Firestore Timestamp com método toDate
-      startDate = surgery.createdAt.toDate();
-    } else if (typeof surgery.createdAt === 'string') {
-      // ISO String
-      startDate = new Date(surgery.createdAt);
+
+    if (baseTime.seconds) {
+      startDate = new Date(baseTime.seconds * 1000);
+    } else if (baseTime.toDate) {
+      startDate = baseTime.toDate();
+    } else if (typeof baseTime === 'string') {
+      startDate = new Date(baseTime);
     } else {
-      // Já é um objeto Date
-      startDate = new Date(surgery.createdAt);
+      startDate = new Date(baseTime);
     }
-    
+
     const now = new Date();
-    const diff = Math.floor((now - startDate) / 1000 / 60); // minutos
-    
+    const diff = Math.floor((now - startDate) / 1000 / 60);
+
     if (diff < 0) return '00:00';
-    
+
     const hours = Math.floor(diff / 60);
     const minutes = diff % 60;
-    
+
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
-  // NOVA FUNÇÃO: Handler para mudanças de identificação
+  const handleEditSection = (sectionId) => {
+    setActiveSection(sectionId);
+  };
+
   const handleIdentificationChange = (updatedData) => {
     setSurgery(prev => ({ ...prev, ...updatedData }));
   };
 
-  // Handler para mudanças nas medicações
   const handleMedicationsChange = (updatedMedications) => {
     setMedications(updatedMedications);
   };
@@ -156,13 +164,14 @@ const SurgeryDetail = () => {
     );
   }
 
-  // SEÇÕES ATUALIZADAS COM A NOVA ABA
+  // SEÇÕES ATUALIZADAS COM A NOVA ABA DE AVALIAÇÃO PRÉ-ANESTÉSICA
   const sections = [
-    { id: 'identification', name: 'Identificação', icon: CreditCard }, // NOVA ABA
+    { id: 'identification', name: 'Identificação', icon: CreditCard },
+    { id: 'preanesthetic', name: 'Pré-Anestésica', icon: UserCheck }, // NOVA ABA
     { id: 'medications', name: 'Medicações', icon: Pill },
     { id: 'vitals', name: 'Sinais Vitais', icon: Activity },
-    { id: 'gases', name: 'Gases', icon: Droplets },
-    { id: 'description', name: 'Descrição', icon: FileText }
+    { id: 'description', name: 'Descrição', icon: FileText },
+    { id: 'preview', name: 'Pré-Visualização', icon: Eye }
   ];
 
   return (
@@ -190,16 +199,22 @@ const SurgeryDetail = () => {
             </div>
             
             <div className="flex items-center space-x-2">
-              <div className="text-right">
-                <div className="flex items-center text-sm font-medium text-primary-600">
-                  <Clock className="h-4 w-4 mr-1" />
-                  {getElapsedTime()}
+                <div className="text-right">
+                    <div className="flex items-center text-sm font-medium text-primary-600">
+                    <Clock className="h-4 w-4 mr-1" />
+                    {getElapsedTime()}
+                    </div>
+                    {surgery.status === 'completado' && (
+                    <div className="flex items-center text-xs text-green-600">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Finalizada
+                    </div>
+                    )}
+                    {saving && (
+                    <p className="text-xs text-gray-500">Salvando...</p>
+                    )}
                 </div>
-                {saving && (
-                  <p className="text-xs text-gray-500">Salvando...</p>
-                )}
-              </div>
-            </div>
+                </div>
           </div>
         </div>
       </div>
@@ -260,9 +275,18 @@ const SurgeryDetail = () => {
           {/* Content area */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-4">
-              {/* NOVA SEÇÃO DE IDENTIFICAÇÃO */}
+              {/* Seção de Identificação */}
               {activeSection === 'identification' && (
                 <IdentificationSection
+                  surgery={surgery}
+                  onDataChange={handleIdentificationChange}
+                  autoSave={autoSave}
+                />
+              )}
+
+              {/* NOVA SEÇÃO DE AVALIAÇÃO PRÉ-ANESTÉSICA */}
+              {activeSection === 'preanesthetic' && (
+                <PreAnestheticEvaluationSection
                   surgery={surgery}
                   onDataChange={handleIdentificationChange}
                   autoSave={autoSave}
@@ -290,17 +314,23 @@ const SurgeryDetail = () => {
                 />
               )}
 
-              {/* Outras seções (placeholder) */}
-              {(activeSection === 'gases' || activeSection === 'description') && (
-                <div className="text-center py-12">
-                  <div className="text-gray-500">
-                    <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-medium mb-2">
-                      Seção {sections.find(s => s.id === activeSection)?.name}
-                    </h3>
-                    <p>Esta seção será implementada em breve</p>
-                  </div>
-                </div>
+              {/* Seção de Descrição */}
+              {activeSection === 'description' && (
+                <DescriptionSection
+                  surgery={surgery}
+                  onDataChange={handleIdentificationChange}
+                  autoSave={autoSave}
+                />
+              )}
+
+              {/* Seção de Pré-Visualização */}
+              {activeSection === 'preview' && (
+                <FichaPreview
+                  surgery={surgery}
+                  onEditSection={handleEditSection}
+                  autoSave={autoSave}          // ADICIONAR
+                  userProfile={userProfile}
+                />
               )}
             </div>
           </div>

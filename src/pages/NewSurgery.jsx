@@ -48,8 +48,14 @@ const NewSurgery = () => {
     setIsLoading(true);
     try {
       // Preparar dados da cirurgia
+      const { surgeryDate, surgeryTime } = data;
+      const startTime = new Date(`${surgeryDate}T${surgeryTime}:00`);
+      const createdAt = new Date();
+
       const surgeryData = {
         ...data,
+        createdAt, // registro técnico (quando o documento foi criado)
+        startTime, // início clínico da cirurgia
         type: surgeryType,
         createdBy: userProfile.uid,
         createdByName: userProfile.name,
@@ -57,7 +63,7 @@ const NewSurgery = () => {
         anesthetists: [{
           doctorId: userProfile.uid,
           doctorName: userProfile.name,
-          startTime: new Date().toISOString(),
+          startTime: startTime.toISOString(),
           endTime: null,
           isActive: true
         }]

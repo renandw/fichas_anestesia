@@ -1,16 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Activity, Plus, TrendingUp, Eye, BarChart3 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  ScatterChart,
-  Scatter,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  LabelList
-} from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { Activity, Plus, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import VitalChart from './VitalChart'; // Importar o novo componente
 
 const VitalSignsSection = ({ 
   vitalSigns = [], 
@@ -21,7 +12,7 @@ const VitalSignsSection = ({
   const [showForm, setShowForm] = useState(false);
   const [isAutoMode, setIsAutoMode] = useState(false);
   const [showGraphs, setShowGraphs] = useState(false);
-  const [endTime, setEndTime] = useState('');
+  const [simDuration, setSimDuration] = useState('');
   const [manualTime, setManualTime] = useState('');
   
   // Estados do formulário
@@ -39,18 +30,16 @@ const VitalSignsSection = ({
 
   // Calcular próximo horário sugerido baseado nos registros existentes
   const getNextSuggestedTime = () => {
-    if (vitalSigns.length === 0) {
-      // Primeiro registro: usar horário base da cirurgia
-      return getSurgeryBaseTime();
-    }
-    
-    // Pegar o último registro e adicionar 5 minutos
+    const baseDate = surgeryStartDate;
+    if (!baseDate) return getSurgeryBaseTime();
+
+    if (vitalSigns.length === 0) return getSurgeryBaseTime();
+
     const lastRecord = vitalSigns[vitalSigns.length - 1];
-    const [hours, minutes] = lastRecord.time.split(':').map(Number);
-    const nextDate = new Date();
-    nextDate.setHours(hours, minutes + 5, 0, 0);
-    
-    return nextDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const elapsed = minutesSinceStart(lastRecord.time, baseDate);
+    const increment = elapsed < 30 ? 5 : 10;
+
+    return addMinutesToTime(lastRecord.time, increment);
   };
 
   // Quando abre o formulário, pré-preencher horário no modo manual
@@ -59,6 +48,7 @@ const VitalSignsSection = ({
       setManualTime(getNextSuggestedTime());
     }
   }, [showForm, isAutoMode, manualTime, vitalSigns.length]);
+
   const ritmosCardiacos = [
     'Sinusal',
     'Taquicardia Sinusal',
@@ -70,30 +60,12 @@ const VitalSignsSection = ({
     'Ritmo Nodal'
   ];
 
-  // Calcular duração da cirurgia baseado no horário de fim
+  // Retorna a duração em minutos solicitada pelo usuário para o modo automático
   const calculateDurationMinutes = () => {
-    if (!surgery?.createdAt || !endTime) return 90; // fallback
-    
-    let startDate;
-    if (surgery.createdAt.seconds) {
-      startDate = new Date(surgery.createdAt.seconds * 1000);
-    } else if (typeof surgery.createdAt === 'string') {
-      startDate = new Date(surgery.createdAt);
-    } else {
-      startDate = new Date(surgery.createdAt);
-    }
-    
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-    const endDate = new Date(startDate);
-    endDate.setHours(endHours, endMinutes, 0, 0);
-    
-    // Se horário de fim for no dia seguinte
-    if (endDate < startDate) {
-      endDate.setDate(endDate.getDate() + 1);
-    }
-    
-    return Math.floor((endDate - startDate) / 1000 / 60);
+    if (!simDuration) return 90; // fallback
+    return parseInt(simDuration);
   };
+
   const calcularPAM = (sistolica, diastolica) => {
     if (!sistolica || !diastolica) return '';
     const pam = Math.round((2 * diastolica + sistolica) / 3);
@@ -102,17 +74,18 @@ const VitalSignsSection = ({
 
   // Função para obter horário base da cirurgia
   const getSurgeryBaseTime = () => {
-    if (!surgery?.createdAt) {
+    const base = surgery?.startTime || surgery?.createdAt;
+    if (!base) {
       return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
     
     let surgeryDate;
-    if (surgery.createdAt.seconds) {
-      surgeryDate = new Date(surgery.createdAt.seconds * 1000);
-    } else if (typeof surgery.createdAt === 'string') {
-      surgeryDate = new Date(surgery.createdAt);
+    if (base.seconds) {
+      surgeryDate = new Date(base.seconds * 1000);
+    } else if (typeof base === 'string') {
+      surgeryDate = new Date(base);
     } else {
-      surgeryDate = new Date(surgery.createdAt);
+      surgeryDate = new Date(base);
     }
     
     return surgeryDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -145,51 +118,83 @@ const VitalSignsSection = ({
     return true;
   };
 
-  // Gerar registros automáticos
-  const generateAutoVitalSigns = (baseData, duration) => {
+  // `startTime` define a hora inicial (HH:MM) para geração dos registros;
+  // quando omitido, o horário base da cirurgia é usado.
+  const generateAutoVitalSigns = (
+    baseData,
+    duration,
+    startTime = getSurgeryBaseTime(),
+    existingTimes = []
+  ) => {
     const records = [];
-    const interval = duration < 60 ? 5 : 10; // 5min se <60min, 10min se >=60min
-    const totalRecords = Math.floor(duration / interval);
-    
-    for (let i = 0; i <= totalRecords; i++) {
-      const timeOffset = i * interval;
-      const recordTime = addMinutesToTime(getSurgeryBaseTime(), timeOffset);
-      
-      // Primeiro registro usa dados originais
-      if (i === 0) {
-        records.push({
-          id: Date.now() + i,
-          time: recordTime,
-          ...baseData,
-          timestamp: new Date().toISOString()
-        });
-        continue;
+    let offset = 0;
+    let i = 0;
+
+    const variation = () => (Math.random() * 5 + 2) / 100;
+    const randomSign = () => (Math.random() > 0.5 ? 1 : -1);
+
+    while (offset <= duration) {
+      const recordTime = addMinutesToTime(startTime, offset);
+
+      if (!existingTimes.includes(recordTime)) {
+        const record =
+          i === 0
+            ? {
+                id: Date.now() + i,
+                time: recordTime,
+                ...baseData,
+                timestamp: new Date().toISOString()
+              }
+            : {
+                id: Date.now() + i,
+                time: recordTime,
+                fc: Math.round(baseData.fc * (1 + variation() * randomSign())),
+                ritmo: baseData.ritmo,
+                pasSistolica: Math.round(
+                  baseData.pasSistolica * (1 + variation() * randomSign())
+                ),
+                pasDiastolica: Math.round(
+                  baseData.pasDiastolica * (1 + variation() * randomSign())
+                ),
+                spo2: Math.min(
+                  100,
+                  Math.max(
+                    90,
+                    Math.round(baseData.spo2 * (1 + variation() * randomSign()))
+                  )
+                ),
+                etco2: baseData.etco2
+                  ? Math.round(baseData.etco2 * (1 + variation() * randomSign()))
+                  : '',
+                temperatura: baseData.temperatura
+                  ? (
+                      baseData.temperatura *
+                      (1 + variation() * randomSign())
+                    ).toFixed(1)
+                  : '',
+                bis: baseData.bis
+                  ? Math.round(baseData.bis * (1 + variation() * randomSign()))
+                  : '',
+                timestamp: new Date().toISOString(),
+                pam: calcularPAM(
+                  Math.round(
+                    baseData.pasSistolica * (1 + variation() * randomSign())
+                  ),
+                  Math.round(
+                    baseData.pasDiastolica * (1 + variation() * randomSign())
+                  )
+                )
+              };
+
+        records.push(record);
       }
-      
-      // Gerar variações de 2-7% dos valores base
-      const variation = () => (Math.random() * 5 + 2) / 100; // 2-7%
-      const randomSign = () => Math.random() > 0.5 ? 1 : -1;
-      
-      const record = {
-        id: Date.now() + i,
-        time: recordTime,
-        fc: Math.round(baseData.fc * (1 + variation() * randomSign())),
-        ritmo: baseData.ritmo, // Ritmo não varia no automático
-        pasSistolica: Math.round(baseData.pasSistolica * (1 + variation() * randomSign())),
-        pasDiastolica: Math.round(baseData.pasDiastolica * (1 + variation() * randomSign())),
-        spo2: Math.min(100, Math.max(90, Math.round(baseData.spo2 * (1 + variation() * randomSign())))),
-        etco2: baseData.etco2 ? Math.round(baseData.etco2 * (1 + variation() * randomSign())) : '',
-        temperatura: baseData.temperatura ? (baseData.temperatura * (1 + variation() * randomSign())).toFixed(1) : '',
-        bis: baseData.bis ? Math.round(baseData.bis * (1 + variation() * randomSign())) : '',
-        timestamp: new Date().toISOString()
-      };
-      
-      // Calcular PAM para o registro gerado
-      record.pam = calcularPAM(record.pasSistolica, record.pasDiastolica);
-      
-      records.push(record);
+
+      // Incremento: 5min até 30min de cirurgia, depois 10min
+      const increment = offset < 30 ? 5 : 10;
+      offset += increment;
+      i += 1;
     }
-    
+
     return records;
   };
 
@@ -209,22 +214,31 @@ const VitalSignsSection = ({
     return Math.round((d - baseDate) / 60000);
   };
 
+  // Data de início da cirurgia como Date
+  const surgeryStartDate = (() => {
+    const base = surgery?.startTime || surgery?.createdAt;
+    if (!base) return null;
+    if (base.seconds) return new Date(base.seconds * 1000);
+    if (typeof base === 'string') return new Date(base);
+    return new Date(base);
+  })();
+
   // Submeter formulário
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
-    if (isAutoMode && !endTime) {
-      toast.error('Informe o horário de fim da cirurgia para modo automático');
+
+    if (isAutoMode && (!simDuration || parseInt(simDuration) <= 0)) {
+      toast.error('Informe a duração (min) para simulação automática');
       return;
     }
-    
+
     if (!isAutoMode && !manualTime) {
       toast.error('Informe o horário do registro no modo manual');
       return;
     }
-    
+
     const pam = calcularPAM(parseInt(formData.pasSistolica), parseInt(formData.pasDiastolica));
-    
+
     const baseRecord = {
       ...formData,
       fc: parseInt(formData.fc),
@@ -236,13 +250,21 @@ const VitalSignsSection = ({
       bis: formData.bis ? parseInt(formData.bis) : '',
       pam: pam
     };
-    
+
     let newRecords;
-    
+
     if (isAutoMode) {
-      // Gerar registros automáticos baseado no horário de fim
+      // Define o horário inicial da geração automática:
+      // se já existe algum registro, começa a partir do último;
+      // caso contrário, usa o horário base da cirurgia.
+      const startTimeForAuto = vitalSigns.length > 0
+        ? vitalSigns[vitalSigns.length - 1].time
+        : getSurgeryBaseTime();
+
       const duration = calculateDurationMinutes();
-      newRecords = generateAutoVitalSigns(baseRecord, duration);
+
+      // Gera os registros automáticos a partir do último horário existente
+      newRecords = generateAutoVitalSigns(baseRecord, duration, startTimeForAuto);
       toast.success(`${newRecords.length} registros gerados automaticamente (${duration} min)`);
     } else {
       // Modo manual - apenas um registro com horário editável
@@ -254,21 +276,21 @@ const VitalSignsSection = ({
       }];
       toast.success('Registro de sinais vitais adicionado');
     }
-    
+
     const updatedVitalSigns = [...vitalSigns, ...newRecords];
     onVitalSignsChange(updatedVitalSigns);
-    
+
     if (autoSave) {
       await autoSave({ vitalSigns: updatedVitalSigns });
     }
-    
+
     // Resetar formulário apenas se for modo automático
     if (isAutoMode) {
       setFormData({
         fc: '', ritmo: 'Sinusal', pasSistolica: '', pasDiastolica: '',
         spo2: '', etco2: '', temperatura: '', bis: '', diurese: ''
       });
-      setEndTime('');
+      setSimDuration('');
     } else {
       // No modo manual, só limpa os campos mas mantém o formulário aberto
       setFormData({
@@ -279,7 +301,6 @@ const VitalSignsSection = ({
     }
   };
 
-  // Remover registro de sinais vitais
   const removeVitalSign = async (recordId) => {
     const updatedVitalSigns = vitalSigns.filter(record => record.id !== recordId);
     onVitalSignsChange(updatedVitalSigns);
@@ -290,28 +311,6 @@ const VitalSignsSection = ({
     
     toast.success('Registro removido');
   };
-
-  // Data de início da cirurgia como Date
-  const surgeryStartDate = useMemo(() => {
-    if (!surgery?.createdAt) return null;
-    if (surgery.createdAt.seconds) return new Date(surgery.createdAt.seconds * 1000);
-    if (typeof surgery.createdAt === 'string') return new Date(surgery.createdAt);
-    return new Date(surgery.createdAt);
-  }, [surgery]);
-
-  // Dados para o gráfico Recharts
-  const chartData = useMemo(() => {
-    if (!surgeryStartDate) return [];
-    return vitalSigns.map(v => ({
-      tMin: minutesSinceStart(v.time, surgeryStartDate),
-      pas : v.pasSistolica,
-      pad : v.pasDiastolica,
-      pam : v.pam,
-      fc  : v.fc,
-      spo2: v.spo2,
-      labelTime: v.time // Adiciona o horário real formatado
-    }));
-  }, [vitalSigns, surgeryStartDate]);
 
   // Calcular PAM em tempo real
   const currentPAM = calcularPAM(parseInt(formData.pasSistolica), parseInt(formData.pasDiastolica));
@@ -339,6 +338,17 @@ const VitalSignsSection = ({
             >
               <Plus className="h-4 w-4" />
               Novo Registro
+            </button>
+            <button
+              onClick={async () => {
+                if (autoSave) {
+                  await autoSave({ endTime: new Date().toISOString() });
+                }
+                toast.success('Registros encerrados');
+              }}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Encerrar
             </button>
           </div>
         </div>
@@ -535,21 +545,22 @@ const VitalSignsSection = ({
                 </div>
               </label>
               
-              {/* Campo de horário de fim - apenas no modo automático */}
+              {/* Campo de duração - apenas no modo automático */}
               {isAutoMode && (
                 <div className="mt-3">
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Horário de fim da cirurgia *
+                    Duração a simular (min) *
                   </label>
                   <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                    type="number"
+                    min="5"
+                    value={simDuration}
+                    onChange={(e) => setSimDuration(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                     required
                   />
                   <p className="text-xs text-primary-600 mt-1">
-                    Registros serão gerados do início até este horário
+                    Serão gerados registros automáticos por esse intervalo
                   </p>
                 </div>
               )}
@@ -564,7 +575,7 @@ const VitalSignsSection = ({
                     fc: '', ritmo: 'Sinusal', pasSistolica: '', pasDiastolica: '',
                     spo2: '', etco2: '', temperatura: '', bis: '', diurese: ''
                   });
-                  setEndTime('');
+                  setSimDuration('');
                   setManualTime('');
                 }}
                 className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
@@ -583,9 +594,15 @@ const VitalSignsSection = ({
         </div>
       )}
 
-      {/* Visualização gráfica */}
+      {/* Visualização gráfica usando o novo componente */}
       {showGraphs && vitalSigns.length > 0 && (
-        <VitalChart chartData={chartData} />
+        <VitalChart 
+          vitalSigns={vitalSigns} 
+          surgery={surgery}
+          showTitle={true}
+          height={320}
+          compact={false}
+        />
       )}
 
       {/* Lista de registros */}
@@ -659,106 +676,6 @@ const VitalSignsSection = ({
           <p className="text-xs">Clique em "Novo Registro" para começar</p>
         </div>
       )}
-    </div>
-  );
-};
-
-// --- Componente de gráfico usando Recharts ------------------------------
-const VitalChart = ({ chartData }) => {
-  const TriangleDown = ({ cx, cy, ...rest }) => (
-    <path d={`M${cx - 6},${cy - 18} L${cx + 6},${cy - 18} L${cx},${cy} Z`} fill="#d63031" {...rest} />
-  );
-  const TriangleUp = ({ cx, cy, ...rest }) => (
-    <path d={`M${cx - 6},${cy + 18} L${cx + 6},${cy + 18} L${cx},${cy} Z`} fill="#d63031" {...rest} />
-  );
-
-  // Dynamic Y axis maximum based on PAS values
-  const maxPas = Math.max(...chartData.map(d => d.pas || 0));
-  const yMax = Math.ceil((maxPas + 30) / 10) * 10;
-  const yTicks = Array.from({ length: Math.floor(yMax / 10) + 1 }, (_, i) => i * 10);
-
-  // Compute xMin, xMax, xDomain, xTicks for XAxis
-  const xMin = Math.min(...chartData.map(d => d.tMin));
-  const xMax = Math.max(...chartData.map(d => d.tMin));
-  const xDomain = [Math.max(0, xMin - 10), xMax + 10];
-  const xTicks = Array.from(
-    { length: Math.floor((xDomain[1] - xDomain[0]) / 10) + 1 },
-    (_, i) => xDomain[0] + i * 10
-  );
-
-  // Obter a data de início da cirurgia para o tickFormatter
-  // Busca o menor labelTime para obter a base real, mas como tMin=0 é o início, pega o primeiro ponto
-  const surgeryStartDate =
-    chartData && chartData.length > 0
-      ? (() => {
-          // Achar o tMin==0 se existir, senão pega o menor tMin
-          let minTMin = Math.min(...chartData.map(d => d.tMin));
-          let base = chartData.find(d => d.tMin === 0) || chartData.find(d => d.tMin === minTMin);
-          // Como não temos acesso direto à Date, usamos o labelTime do ponto tMin==0
-          if (base && base.labelTime) {
-            // Tenta criar uma data "hoje" com o horário de base.labelTime
-            const [h, m] = base.labelTime.split(':').map(Number);
-            const d = new Date();
-            d.setHours(h, m, 0, 0);
-            return d;
-          }
-          return null;
-        })()
-      : null;
-
-  return (
-    <div className="bg-white px-2 py-3 rounded-lg border border-gray-200 shadow-sm">
-      <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-        <BarChart3 className="h-5 w-5 text-blue-600" />
-        Gráfico de Sinais Vitais
-      </h4>
-
-      <div className="w-full flex justify-center">
-        <ResponsiveContainer width="100%" height={320}>
-          <ScatterChart margin={{ top: 10, right: 10, bottom: 25, left: 30 }}>
-            <CartesianGrid stroke="#e5e5e5" strokeDasharray="3 3" />
-
-            {/* Eixo X – minutos desde o início (adaptativo) */}
-            <XAxis
-              type="number"
-              dataKey="tMin"
-              domain={xDomain}
-              ticks={xTicks}
-              tickFormatter={(tMin) => {
-                if (!surgeryStartDate) return '';
-                const realTime = new Date(surgeryStartDate.getTime() + tMin * 60000);
-                return realTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-              }}
-              label={{ value: 'Tempo (min)', position: 'insideBottom', offset: -30 }}
-              tick={{ fontSize: 10 }}
-            />
-
-            {/* Eixo Y – domínio dinâmico baseado no maior PAS */}
-            <YAxis
-              domain={[0, yMax]}
-              ticks={yTicks}
-              tickCount={10}
-              tick={{ fontSize: 10 }}
-            />
-
-            {/* Séries */}
-            <Scatter name="PAS" data={chartData} dataKey="pas" shape={TriangleDown} />
-            <Scatter name="PAD" data={chartData} dataKey="pad" shape={TriangleUp} />
-            <Scatter data={chartData} dataKey="pam" shape={() => null}>
-              <LabelList dataKey="pam" position="bottom" fontSize={10} offset={60} />
-            </Scatter>
-            <Scatter name="FC"  data={chartData} dataKey="fc"
-                     shape={(p) => <circle {...p} r={5} fill="#000" />} />
-
-            {/* SpO₂ – somente rótulo numérico acima do ponto */}
-            <Scatter data={chartData} dataKey="spo2" shape={() => null}>
-              <LabelList dataKey="spo2" position="top" formatter={(value) => `${value}%`} fontSize={10} offset={60} />
-            </Scatter>
-
-            <Tooltip cursor={false} />
-          </ScatterChart>
-        </ResponsiveContainer>
-      </div>
     </div>
   );
 };

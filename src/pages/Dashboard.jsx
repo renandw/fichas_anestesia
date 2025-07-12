@@ -14,6 +14,8 @@ import {
   TrendingUp
 } from 'lucide-react';
 
+
+
 const Dashboard = () => {
   const { userProfile } = useAuth();
   
@@ -26,6 +28,38 @@ const Dashboard = () => {
     averageTime: '0min',
     uniquePatients: 0
   });
+
+
+  // ===== ADICIONAR NO Dashboard.js =====
+
+// Função para exibir procedimentos (adicionar antes do return do componente)
+const getProcedureDisplay = (surgery) => {
+    // Para cirurgia SUS
+    if (surgery.proposedSurgery) {
+      return surgery.proposedSurgery;
+    }
+    
+    // Para cirurgia Convênio
+    if (surgery.cbhpmProcedures && surgery.cbhpmProcedures.length > 0) {
+      // Filtrar apenas procedimentos válidos (que têm procedimento preenchido)
+      const validProcedures = surgery.cbhpmProcedures.filter(p => p.procedimento && p.procedimento.trim() !== '');
+      
+      if (validProcedures.length === 0) {
+        return 'Procedimento não informado';
+      }
+      
+      if (validProcedures.length === 1) {
+        // Apenas um procedimento
+        return validProcedures[0].procedimento;
+      } else {
+        // Múltiplos procedimentos: mostrar primeiro + contador
+        const remaining = validProcedures.length - 1;
+        return `${validProcedures[0].procedimento} (+${remaining} ${remaining === 1 ? 'outro' : 'outros'})`;
+      }
+    }
+    
+    return 'Procedimento não informado';
+  };
 
   // Carregar dados reais do Firebase
   useEffect(() => {
@@ -80,7 +114,7 @@ const Dashboard = () => {
     ).size;
     
     // Tempo médio (cirurgias finalizadas)
-    const finishedSurgeries = recent.filter(s => s.status === 'finalizada');
+    const finishedSurgeries = recent.filter(s => s.status === 'completado');
     let averageMinutes = 0;
     
     if (finishedSurgeries.length > 0) {
@@ -130,10 +164,11 @@ const Dashboard = () => {
       ? new Date(surgery.createdAt.seconds * 1000)
       : new Date(surgery.createdAt);
     
-    const end = surgery.finishedAt 
-      ? (surgery.finishedAt.seconds 
-          ? new Date(surgery.finishedAt.seconds * 1000)
-          : new Date(surgery.finishedAt))
+    // AJUSTAR: usar completedAt em vez de finishedAt para consistência
+    const end = surgery.completedAt 
+      ? (surgery.completedAt.seconds 
+          ? new Date(surgery.completedAt.seconds * 1000)
+          : new Date(surgery.completedAt))
       : new Date();
     
     const diffMinutes = Math.floor((end - start) / 1000 / 60);
@@ -171,7 +206,7 @@ const Dashboard = () => {
   ];
 
   const getStatusBadge = (status) => {
-    if (status === 'finalizada') {
+    if (status === 'completado') {
       return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Finalizada</span>;
     }
     if (status === 'em_andamento') {
@@ -362,7 +397,7 @@ const Dashboard = () => {
                       {surgery.patientName || 'Nome não informado'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {surgery.proposedSurgery || surgery.cbhpmProcedure || 'Procedimento não informado'}
+                      {surgery.proposedSurgery ||  getProcedureDisplay(surgery) || 'Procedimento não informado'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatTime(surgery.createdAt)}

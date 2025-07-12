@@ -176,6 +176,9 @@ const MedicationsSection = ({
         { name: 'Propofol', dose: '200mg', via: 'EV', category: 'Hipnótico' },
         { name: 'Fentanil', dose: '250mcg', via: 'EV', category: 'Opioide' },
         { name: 'Rocurônio', dose: '50mg', via: 'EV', category: 'Bloqueador Neuromuscular' },
+        { name: 'Oxigênio', dose: '1L/min', via: 'VR', category: 'Gases Frescos' },
+        { name: 'Ar Comprimido', dose: '1L/min', via: 'VR', category: 'Gases Frescos' },
+        { name: 'Sevoflurano', dose: '10mL/', via: 'VR', category: 'Anestésicos Inalatórios' }
       ]
     },
     {
@@ -195,7 +198,8 @@ const MedicationsSection = ({
       icon: '💊',
       medications: [
         { name: 'Bupivacaína Pesada', dose: '15mg', via: 'IT', category: 'Anestésico Local' },
-        { name: 'Morfina', dose: '80mcg', via: 'IT', category: 'Opioide' }
+        { name: 'Morfina', dose: '80mcg', via: 'IT', category: 'Opioide' },
+        { name: 'Oxigênio', dose: '3L/min', via: 'VR', category: 'Gases Frescos' }
       ]
     },
     {
@@ -203,7 +207,8 @@ const MedicationsSection = ({
         icon: '💊',
         medications: [
           { name: 'Bupivacaína Isobárica', dose: '15mg', via: 'IT', category: 'Anestésico Local' },
-          { name: 'Morfina', dose: '80mcg', via: 'IT', category: 'Opioide' }
+          { name: 'Morfina', dose: '80mcg', via: 'IT', category: 'Opioide' },
+          { name: 'Oxigênio', dose: '3L/min', via: 'VR', category: 'Gases Frescos' }
         ]
     },
     {
@@ -212,7 +217,8 @@ const MedicationsSection = ({
         medications: [
           { name: 'Levobupivacaína', dose: '20ml', via: 'PD', category: 'Anestésico Local' },
           { name: 'Fentanil', dose: '100mcg', via: 'PD', category: 'Opioide' },
-          { name: 'Morfina', dose: '2mg', via: 'PD', category: 'Opioide' }
+          { name: 'Morfina', dose: '2mg', via: 'PD', category: 'Opioide' },
+          { name: 'Oxigênio', dose: '3L/min', via: 'VR', category: 'Gases Frescos' }
         ]
     },
     {
@@ -220,7 +226,8 @@ const MedicationsSection = ({
         icon: '💉',
         medications: [
         { name: 'Propofol', dose: '70mg', via: 'EV', category: 'Hipnótico' },
-        { name: 'Fentanil', dose: '50mcg', via: 'EV', category: 'Opioide' }
+        { name: 'Fentanil', dose: '50mcg', via: 'EV', category: 'Opioide' },
+        { name: 'Oxigênio', dose: '3L/min', via: 'VR', category: 'Gases Frescos' }
         ]
     },
     {
@@ -228,7 +235,8 @@ const MedicationsSection = ({
         icon: '🧠',
         medications: [
           { name: 'Levoupivacaína', dose: '50mg', via: 'PN', category: 'Anestésico Local' },
-          { name: 'Lidocaína', dose: '100mg', via: 'PN', category: 'Anestésico Local' }
+          { name: 'Lidocaína', dose: '100mg', via: 'PN', category: 'Anestésico Local' },
+          { name: 'Oxigênio', dose: '3L/min', via: 'VR', category: 'Gases Frescos' }
         ]
     },
     {
@@ -238,7 +246,8 @@ const MedicationsSection = ({
           { name: 'Etomidato', dose: '20mg', via: 'EV', category: 'Indutor Hipnótico' },
           { name: 'Succinilcolina', dose: '100mg', via: 'EV', category: 'Bloqueador Neuromuscular' },
           { name: 'Fentanil', dose: '100mcg', via: 'EV', category: 'Opioide' },
-          { name: 'Lidocaína', dose: '1mg/kg', via: 'EV', category: 'Anestésico Local' }
+          { name: 'Lidocaína', dose: '1mg/kg', via: 'EV', category: 'Anestésico Local' },
+          { name: 'Oxigênio', dose: '1L/min', via: 'VR', category: 'Gases Frescos' }
         ]
     }
   ];
@@ -250,6 +259,8 @@ const MedicationsSection = ({
     { name: 'Desflurano', category: 'Anestésico Inalatório' },
     { name: 'Isoflurano', category: 'Anestésico Inalatório' },
     { name: 'Óxido nitroso', category: 'Anestésico Inalatório' },
+    { name: 'Oxigênio', category: 'Gases Frescos' },
+    { name: 'Gás Comprimido', category: 'Gases Frescos' },
     
     // Anestésicos Endovenosos
     { name: 'Propofol', category: 'Hipnótico' },

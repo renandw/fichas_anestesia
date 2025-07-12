@@ -1,0 +1,629 @@
+import React, { useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import { Printer, UserCheck } from 'lucide-react';
+
+const PreAnestheticPrintYellow = ({ surgery, onEditSection }) => {
+  const componentRef = useRef();
+  
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `Avaliacao_Pre_Anestesica_Amarela_${surgery.id}`,
+    onBeforeGetContent: () => {
+      console.log('Preparando impressão da avaliação pré-anestésica (versão amarela)...');
+      return Promise.resolve();
+    },
+    onAfterPrint: () => {
+      console.log('Impressão da avaliação amarela concluída');
+    },
+    removeAfterPrint: false
+  });
+
+  // Helper functions (iguais ao componente original)
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleDateString('pt-BR');
+  };
+
+  const calculateAge = () => {
+    if (!surgery?.patientBirthDate) return 'N/A';
+    
+    const birth = new Date(surgery.patientBirthDate);
+    const now = new Date();
+    
+    let years = now.getFullYear() - birth.getFullYear();
+    let months = now.getMonth() - birth.getMonth();
+    let days = now.getDate() - birth.getDate();
+
+    if (days < 0) {
+      months--;
+      const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      days += lastMonth.getDate();
+    }
+
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    let ageText = '';
+    if (years > 0) {
+      ageText += `${years} ano${years !== 1 ? 's' : ''}`;
+      if (months > 0) ageText += `, ${months} mês${months !== 1 ? 'es' : ''}`;
+    } else if (months > 0) {
+      ageText += `${months} mês${months !== 1 ? 'es' : ''}`;
+      if (days > 0) ageText += `, ${days} dia${days !== 1 ? 's' : ''}`;
+    } else {
+      ageText = `${days} dia${days !== 1 ? 's' : ''}`;
+    }
+
+    return ageText;
+  };
+
+  const getHospitalName = () => {
+    if (typeof surgery?.hospital === 'string') {
+      return surgery.hospital;
+    }
+    return surgery?.hospital?.shortName || 'Hospital não informado';
+  };
+
+  const evaluation = surgery?.preAnestheticEvaluation || {};
+
+  const renderSystemComorbidities = (systemData, systemOther, title) => {
+    if (!systemData || Object.keys(systemData).length === 0) return null;
+
+    const conditions = [];
+    
+    if (systemData.none) {
+      return `${title}: Sem diagnóstico`;
+    }
+
+    const conditionMaps = {
+      'CARDIOVASCULAR': {
+        hypertension: 'HAS',
+        heartFailure: 'ICC',
+        coronaryDisease: 'DAC',
+        arrhythmias: 'Arritmias',
+        valvular: 'Valvulopatias'
+      },
+      'RESPIRATÓRIO': {
+        asthma: 'Asma',
+        copd: 'DPOC',
+        pneumonia: 'Pneumonia prévia',
+        smoking: 'Tabagismo',
+        sleepApnea: 'Apneia do sono'
+      },
+      'ENDÓCRINO': {
+        diabetes: 'DM',
+        hypothyroid: 'Hipotireoidismo',
+        hyperthyroid: 'Hipertireoidismo',
+        obesity: 'Obesidade'
+      },
+      'DIGESTIVO': {
+        gerd: 'DRGE',
+        hepatopathy: 'Hepatopatia',
+        pepticUlcer: 'Úlcera péptica',
+        cholelithiasis: 'Colelitíase'
+      },
+      'HEMATOLÓGICO': {
+        anemia: 'Anemia',
+        coagulopathy: 'Coagulopatias',
+        anticoagulants: 'Uso anticoagulantes'
+      },
+      'ÓSSEO/MUSCULAR': {
+        arthritis: 'Artrite/Artrose',
+        osteoporosis: 'Osteoporose',
+        myopathy: 'Miopatias'
+      },
+      'GENITURINÁRIO': {
+        chronicKidneyDisease: 'IRC',
+        recurrentUti: 'ITU recorrente',
+        prostaticHyperplasia: 'Hiperplasia prostática'
+      }
+    };
+
+    const conditionMap = conditionMaps[title] || {};
+    
+    Object.keys(systemData).forEach(key => {
+      if (key !== 'none' && systemData[key] && conditionMap[key]) {
+        conditions.push(conditionMap[key]);
+      }
+    });
+
+    if (systemOther) {
+      conditions.push(systemOther);
+    }
+
+    return conditions.length > 0 ? `${title}: ${conditions.join(', ')}` : null;
+  };
+
+  const getClearanceStatus = () => {
+    if (!evaluation.clearanceStatus) return null;
+    
+    const statusMap = {
+      'cleared': { text: 'LIBERADO SEM RESSALVAS', color: 'text-green-800', bgColor: 'bg-green-200' },
+      'cleared_with_restrictions': { text: 'LIBERADO COM RESSALVAS', color: 'text-amber-800', bgColor: 'bg-amber-200' },
+      'not_cleared': { text: 'NÃO LIBERADO', color: 'text-red-800', bgColor: 'bg-red-200' }
+    };
+
+    return statusMap[evaluation.clearanceStatus] || null;
+  };
+
+  const clearanceInfo = getClearanceStatus();
+
+  return (
+    <div className="space-y-4">
+      {/* Header com botões de ação */}
+      <div className="no-print flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <UserCheck className="h-5 w-5 text-yellow-600 mr-2" />
+          Avaliação Pré-Anestésica (Versão Amarela)
+        </h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onEditSection('preanesthetic')}
+            className="btn-secondary flex items-center"
+          >
+            <UserCheck className="h-4 w-4 mr-2" />
+            Editar Avaliação
+          </button>
+          <button
+            onClick={handlePrint}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center"
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir Versão Amarela
+          </button>
+        </div>
+      </div>
+
+      {/* Ficha para impressão - VERSÃO AMARELA */}
+      <div 
+        ref={componentRef}
+        className="print-page"
+        style={{ 
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '11px',
+          lineHeight: '1.2',
+          color: '#000',
+          backgroundColor: '#fefce8', // Fundo amarelo claro
+          padding: '16px'
+        }}
+      >
+        {/* Cabeçalho com tema amarelo */}
+        <div 
+          className="pb-2 mb-3"
+          style={{ 
+            borderBottom: '3px solid #d97706', // Borda laranja/amarelo escuro
+          }}
+        >
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 
+                className="text-xl font-bold mb-0"
+                style={{ color: '#92400e' }} // Texto amarelo escuro
+              >
+                AVALIAÇÃO PRÉ-ANESTÉSICA
+              </h1>
+              <div className="flex items-center space-x-6">
+                <p 
+                  className="text-xs mb-0"
+                  style={{ color: '#451a03' }} // Texto marrom escuro
+                >
+                  Avaliação do risco anestésico
+                </p>
+                <div 
+                  className="flex space-x-4 text-xs"
+                  style={{ color: '#451a03' }}
+                >
+                  <div><strong>HOSPITAL:</strong> {getHospitalName()}</div>
+                  <div><strong>ANESTESIOLOGISTA:</strong> {surgery.createdByName || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div 
+                className="px-2 py-1 rounded text-sm"
+                style={{ 
+                  backgroundColor: '#fbbf24', // Amarelo médio
+                  color: '#92400e' // Texto amarelo escuro
+                }}
+              >
+                <span className="font-bold">
+                  {surgery.id}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Informações básicas do paciente */}
+        <div className="space-y-1 mb-4 text-xs">
+          <div className="grid grid-cols-4 gap-4">
+            <div><strong>DATA:</strong> {formatDate(surgery.surgeryDate)}</div>
+            <div><strong>PACIENTE:</strong> {surgery.patientName || 'N/A'}</div>
+            <div><strong>IDADE:</strong> {calculateAge()}</div>
+            <div><strong>SEXO:</strong> {(surgery.patientSex || 'N/A').toUpperCase()}</div>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            <div><strong>PESO:</strong> {surgery.patientWeight ? `${surgery.patientWeight}kg` : 'N/A'}</div>
+            <div>
+              {surgery.type === 'sus'
+                ? <><strong>CNS:</strong> {surgery.patientCNS || 'N/A'}</>
+                : <><strong>CONVÊNIO:</strong> {surgery.insuranceName || 'N/A'}</>}
+            </div>
+            <div>
+              {surgery.type === 'sus'
+                ? <><strong>REGISTRO:</strong> {surgery.hospitalRecord || 'N/A'}</>
+                : <><strong>MATRÍCULA:</strong> {surgery.insuranceNumber || 'N/A'}</>}
+            </div>
+            <div><strong>HORÁRIO:</strong> {surgery.surgeryTime || 'N/A'}</div>
+          </div>
+        </div>
+
+        {/* Status de liberação - versão amarela */}
+        {clearanceInfo && (
+          <div 
+            className="p-3 mb-4 rounded"
+            style={{ 
+              backgroundColor: clearanceInfo.bgColor === 'bg-green-200' ? '#dcfce7' : 
+                              clearanceInfo.bgColor === 'bg-amber-200' ? '#fef3c7' : '#fecaca',
+              border: `2px solid ${clearanceInfo.bgColor === 'bg-green-200' ? '#16a34a' : 
+                                  clearanceInfo.bgColor === 'bg-amber-200' ? '#d97706' : '#dc2626'}`
+            }}
+          >
+            <div className="text-center">
+              <h2 
+                className="text-lg font-bold mb-1"
+                style={{ 
+                  color: clearanceInfo.bgColor === 'bg-green-200' ? '#15803d' : 
+                         clearanceInfo.bgColor === 'bg-amber-200' ? '#92400e' : '#b91c1c'
+                }}
+              >
+                {clearanceInfo.text}
+              </h2>
+              {evaluation.clearanceRestrictions && (
+                <p className="text-sm"><strong>Ressalvas:</strong> {evaluation.clearanceRestrictions}</p>
+              )}
+              {evaluation.notClearedReason && (
+                <p className="text-sm"><strong>Motivo:</strong> {evaluation.notClearedReason}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Informações especiais */}
+        {(evaluation.isPregnant || evaluation.isInfant) && (
+          <div className="mb-3">
+            <h2 
+              className="text-sm font-bold mb-2 pb-1"
+              style={{ 
+                color: '#92400e',
+                borderBottom: '1px solid #d97706'
+              }}
+            >
+              INFORMAÇÕES ESPECIAIS
+            </h2>
+            <div className="text-xs space-y-1">
+              {evaluation.isPregnant && (
+                <div>
+                  <strong>GESTANTE:</strong> {evaluation.pregnancyWeeks} semanas de IG
+                  {evaluation.pregnancyOther && <span> - {evaluation.pregnancyOther}</span>}
+                </div>
+              )}
+              {evaluation.isInfant && (
+                <div>
+                  <strong>CRIANÇA &lt; 1 ANO:</strong> {evaluation.infantMonths} meses
+                  {evaluation.pediatricOther && <span> - {evaluation.pediatricOther}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ASA Classification */}
+        {evaluation.asaClassification && (
+          <div className="mb-3">
+            <h2 
+              className="text-sm font-bold mb-2 pb-1"
+              style={{ 
+                color: '#92400e',
+                borderBottom: '1px solid #d97706'
+              }}
+            >
+              CLASSIFICAÇÃO ASA
+            </h2>
+            <div 
+              className="text-center p-2 rounded"
+              style={{ backgroundColor: '#fed7aa' }} // Laranja claro
+            >
+              <span 
+                className="text-lg font-bold"
+                style={{ color: '#c2410c' }} // Laranja escuro
+              >
+                ASA {evaluation.asaClassification}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Comorbidades */}
+        <div className="mb-3">
+          <h2 
+            className="text-sm font-bold mb-2 pb-1"
+            style={{ 
+              color: '#92400e',
+              borderBottom: '1px solid #d97706'
+            }}
+          >
+            COMORBIDADES
+          </h2>
+          <div className="text-xs space-y-1">
+            {[
+              renderSystemComorbidities(evaluation.cardiovascular, evaluation.cardiovascularOther, 'CARDIOVASCULAR'),
+              renderSystemComorbidities(evaluation.respiratory, evaluation.respiratoryOther, 'RESPIRATÓRIO'),
+              renderSystemComorbidities(evaluation.endocrine, evaluation.endocrineOther, 'ENDÓCRINO'),
+              renderSystemComorbidities(evaluation.digestive, evaluation.digestiveOther, 'DIGESTIVO'),
+              renderSystemComorbidities(evaluation.hematologic, evaluation.hematologicOther, 'HEMATOLÓGICO'),
+              renderSystemComorbidities(evaluation.musculoskeletal, evaluation.musculoskeletalOther, 'ÓSSEO/MUSCULAR'),
+              renderSystemComorbidities(evaluation.genitourinary, evaluation.genitourinaryOther, 'GENITURINÁRIO')
+            ].filter(Boolean).map((item, index) => (
+              <div key={index}>{item}</div>
+            ))}
+            
+            {[
+              evaluation.cardiovascular,
+              evaluation.respiratory,
+              evaluation.endocrine,
+              evaluation.digestive,
+              evaluation.hematologic,
+              evaluation.musculoskeletal,
+              evaluation.genitourinary
+            ].every(system => !system || Object.keys(system).length === 0 || system.none) && (
+              <div 
+                className="italic"
+                style={{ color: '#78716c' }}
+              >
+                Sem comorbidades registradas
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Histórico cirúrgico */}
+        <div className="mb-3">
+          <h2 
+            className="text-sm font-bold mb-2 pb-1"
+            style={{ 
+              color: '#92400e',
+              borderBottom: '1px solid #d97706'
+            }}
+          >
+            HISTÓRICO CIRÚRGICO/ANESTÉSICO
+          </h2>
+          <div className="text-xs space-y-1">
+            {evaluation.noPreviousSurgeries ? (
+              <div>Sem cirurgias prévias</div>
+            ) : evaluation.previousSurgeries ? (
+              <div><strong>Cirurgias prévias:</strong> {evaluation.previousSurgeries}</div>
+            ) : null}
+            
+            {evaluation.noAnestheticComplications ? (
+              <div>Sem complicações anestésicas prévias</div>
+            ) : evaluation.anestheticComplications ? (
+              <div><strong>Complicações:</strong> {evaluation.anestheticComplications}</div>
+            ) : null}
+            
+            {!evaluation.noPreviousSurgeries && !evaluation.previousSurgeries && 
+             !evaluation.noAnestheticComplications && !evaluation.anestheticComplications && (
+              <div 
+                className="italic"
+                style={{ color: '#78716c' }}
+              >
+                Histórico não informado
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Medicamentos e alergias */}
+        <div className="mb-3">
+          <h2 
+            className="text-sm font-bold mb-2 pb-1"
+            style={{ 
+              color: '#92400e',
+              borderBottom: '1px solid #d97706'
+            }}
+          >
+            MEDICAMENTOS E ALERGIAS
+          </h2>
+          <div className="text-xs space-y-1">
+            {evaluation.currentMedications ? (
+              <div><strong>Medicamentos em uso:</strong> {evaluation.currentMedications}</div>
+            ) : (
+              <div>Sem medicamentos em uso informados</div>
+            )}
+            
+            {evaluation.noAllergies ? (
+              <div><strong>Alergias:</strong> Sem alergias conhecidas</div>
+            ) : evaluation.allergies ? (
+              <div><strong>Alergias:</strong> {evaluation.allergies}</div>
+            ) : (
+              <div><strong>Alergias:</strong> Não informado</div>
+            )}
+          </div>
+        </div>
+
+        {/* Via aérea */}
+        {(evaluation.mallampati || evaluation.airwayFindings || evaluation.airwayOther) && (
+          <div className="mb-3">
+            <h2 
+              className="text-sm font-bold mb-2 pb-1"
+              style={{ 
+                color: '#92400e',
+                borderBottom: '1px solid #d97706'
+              }}
+            >
+              VIA AÉREA
+            </h2>
+            <div className="text-xs space-y-1">
+              {evaluation.mallampati && (
+                <div><strong>Mallampati:</strong> {evaluation.mallampati}</div>
+              )}
+              
+              {evaluation.airwayFindings && (
+                <div>
+                  {Object.entries(evaluation.airwayFindings).filter(([key, value]) => value).map(([key, value]) => {
+                    const labels = {
+                      mouthOpening: 'Abertura bucal > 3cm',
+                      neckLimitation: 'Pescoço curto/limitação cervical',
+                      looseTeeth: 'Dentes soltos',
+                      dentures: 'Próteses'
+                    };
+                    return labels[key];
+                  }).join(', ')}
+                </div>
+              )}
+              
+              {evaluation.airwayOther && (
+                <div><strong>Outras alterações:</strong> {evaluation.airwayOther}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Exame físico */}
+        <div className="mb-3">
+          <h2 
+            className="text-sm font-bold mb-2 pb-1"
+            style={{ 
+              color: '#92400e',
+              borderBottom: '1px solid #d97706'
+            }}
+          >
+            EXAME FÍSICO
+          </h2>
+          <div className="text-xs">
+            {evaluation.physicalExam || 'Sem alterações dignas de nota'}
+          </div>
+        </div>
+
+        {/* Exames complementares */}
+        {(evaluation.labResults || evaluation.otherLabResults || evaluation.ecgStatus || evaluation.chestXrayStatus || evaluation.otherExams) && (
+          <div className="mb-3">
+            <h2 
+              className="text-sm font-bold mb-2 pb-1"
+              style={{ 
+                color: '#92400e',
+                borderBottom: '1px solid #d97706'
+              }}
+            >
+              EXAMES COMPLEMENTARES
+            </h2>
+            <div className="text-xs space-y-1">
+              {/* Laboratório */}
+              {evaluation.labResults && Object.values(evaluation.labResults).some(val => val) && (
+                <div>
+                  <strong>Laboratório:</strong> {
+                    Object.entries(evaluation.labResults)
+                      .filter(([key, value]) => value)
+                      .map(([key, value]) => {
+                        const labels = {
+                          hemoglobin: 'Hb',
+                          hematocrit: 'Ht',
+                          glucose: 'Glicemia',
+                          urea: 'Ureia',
+                          creatinine: 'Creatinina'
+                        };
+                        const units = {
+                          hemoglobin: 'g/dL',
+                          hematocrit: '%',
+                          glucose: 'mg/dL',
+                          urea: 'mg/dL',
+                          creatinine: 'mg/dL'
+                        };
+                        return `${labels[key]}: ${value}${units[key]}`;
+                      }).join(', ')
+                  }
+                </div>
+              )}
+              
+              {evaluation.otherLabResults && (
+                <div>{evaluation.otherLabResults}</div>
+              )}
+              
+              {/* Imagem */}
+              {evaluation.ecgStatus && (
+                <div>
+                  <strong>ECG:</strong> {evaluation.ecgStatus === 'normal' ? 'Normal' : `Alterado - ${evaluation.ecgAbnormal}`}
+                </div>
+              )}
+              
+              {evaluation.chestXrayStatus && (
+                <div>
+                  <strong>RX Tórax:</strong> {evaluation.chestXrayStatus === 'normal' ? 'Normal' : `Alterado - ${evaluation.chestXrayAbnormal}`}
+                </div>
+              )}
+              
+              {evaluation.otherExams && (
+                <div><strong>Outros exames:</strong> {evaluation.otherExams}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Técnica anestésica */}
+        {evaluation.anestheticTechnique && Object.values(evaluation.anestheticTechnique).some(val => val) && (
+          <div className="mb-3">
+            <h2 
+              className="text-sm font-bold mb-2 pb-1"
+              style={{ 
+                color: '#92400e',
+                borderBottom: '1px solid #d97706'
+              }}
+            >
+              TÉCNICA ANESTÉSICA PLANEJADA
+            </h2>
+            <div className="text-xs">
+              {Object.entries(evaluation.anestheticTechnique)
+                .filter(([key, value]) => value)
+                .map(([key, value]) => {
+                  const labels = {
+                    generalBalanced: 'Geral balanceada',
+                    generalIv: 'Geral venosa',
+                    spinal: 'Raquianestesia',
+                    epidural: 'Peridural',
+                    plexusBlock: 'Bloqueio de plexo',
+                    sedation: 'Sedação',
+                    local: 'Local',
+                    combined: 'Combinada'
+                  };
+                  return labels[key];
+                }).join(', ')}
+              
+              {evaluation.combinedTechnique && (
+                <span> - {evaluation.combinedTechnique}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Footer com tema amarelo */}
+        <div 
+          className="mt-4 pt-2 text-center text-xs"
+          style={{ 
+            borderTop: '1px solid #d97706',
+            color: '#451a03'
+          }}
+        >
+          <div>
+            Avaliação realizada em {new Date().toLocaleString('pt-BR')} | 
+            <strong> Anestesiologista:</strong> {surgery.createdByName || 'N/A'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PreAnestheticPrintYellow;
