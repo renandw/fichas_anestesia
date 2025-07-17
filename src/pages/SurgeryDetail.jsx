@@ -1,32 +1,28 @@
-// Importações (adicionar a nova seção)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getSurgery, updateSurgery, getActiveSurgeries } from '../services/firestore';
-import { 
-  MedicationsSection, 
-  VitalSignsSection, 
-  IdentificationSection, 
-  DescriptionSection, 
+import {
+  MedicationsSection,
+  VitalSignsSection,
+  IdentificationSection,
+  DescriptionSection,
   FichaPreview,
-  PreAnestheticEvaluationSection // NOVA IMPORTAÇÃO
+  PreAnestheticEvaluationSection
 } from '../components/surgery';
 
-import { 
-  ArrowLeft, 
-  Clock, 
-  User, 
-  Stethoscope,
-  Activity,
-  Pill,
-  Droplets,
-  FileText,
-  Save,
+import {
+  ArrowLeft,
+  Clock,
   CheckCircle,
-  CreditCard,
+  Pill,
+  Activity,
+  FileText,
+  IdCardLanyard,
   Eye,
-  UserCheck // NOVO ÍCONE PARA AVALIAÇÃO PRÉ-ANESTÉSICA
+  UserCheck
 } from 'lucide-react';
+
 import toast from 'react-hot-toast';
 
 const SurgeryDetail = () => {
@@ -40,20 +36,18 @@ const SurgeryDetail = () => {
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('identification');
 
-  // Estados para medicações e sinais vitais
   const [medications, setMedications] = useState([]);
   const [vitalSigns, setVitalSigns] = useState([]);
 
-  // Carregar dados da cirurgia
   useEffect(() => {
     const loadSurgery = async () => {
       try {
         setLoading(true);
         console.log('Carregando cirurgia:', id);
-        
+
         const surgeryData = await getSurgery(id);
         console.log('Dados da cirurgia carregados:', surgeryData);
-        
+
         if (!surgeryData) {
           toast.error('Cirurgia não encontrada');
           navigate('/dashboard');
@@ -63,8 +57,7 @@ const SurgeryDetail = () => {
         setSurgery(surgeryData);
         setMedications(surgeryData.medications || []);
         setVitalSigns(surgeryData.vitalSigns || []);
-        
-        // Carregar cirurgias ativas para sidebar
+
         if (userProfile?.uid) {
           try {
             const active = await getActiveSurgeries(userProfile.uid);
@@ -87,7 +80,6 @@ const SurgeryDetail = () => {
     }
   }, [id, userProfile, navigate]);
 
-  // AutoSave
   const autoSave = async (data) => {
     setSaving(true);
     try {
@@ -99,13 +91,11 @@ const SurgeryDetail = () => {
     }
   };
 
-  // Calcular tempo decorrido desde o início clínico da cirurgia
   const getElapsedTime = () => {
     const baseTime = surgery?.startTime || surgery?.createdAt;
     if (!baseTime) return '00:00';
-
+  
     let startDate;
-
     if (baseTime.seconds) {
       startDate = new Date(baseTime.seconds * 1000);
     } else if (baseTime.toDate) {
@@ -115,15 +105,27 @@ const SurgeryDetail = () => {
     } else {
       startDate = new Date(baseTime);
     }
-
-    const now = new Date();
-    const diff = Math.floor((now - startDate) / 1000 / 60);
-
+  
+    let endDate = new Date();
+    const completed = surgery?.completedAt;
+    if (completed) {
+      if (completed.seconds) {
+        endDate = new Date(completed.seconds * 1000);
+      } else if (completed.toDate) {
+        endDate = completed.toDate();
+      } else if (typeof completed === 'string') {
+        endDate = new Date(completed);
+      } else {
+        endDate = new Date(completed);
+      }
+    }
+  
+    const diff = Math.floor((endDate - startDate) / 1000 / 60);
     if (diff < 0) return '00:00';
-
+  
     const hours = Math.floor(diff / 60);
     const minutes = diff % 60;
-
+  
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
@@ -148,7 +150,7 @@ const SurgeryDetail = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="loading-spinner mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando cirurgia...</p>
+          <p className="text-gray-600">Carregando cirurgia…</p>
         </div>
       </div>
     );
@@ -164,10 +166,9 @@ const SurgeryDetail = () => {
     );
   }
 
-  // SEÇÕES ATUALIZADAS COM A NOVA ABA DE AVALIAÇÃO PRÉ-ANESTÉSICA
   const sections = [
-    { id: 'identification', name: 'Identificação', icon: CreditCard },
-    { id: 'preanesthetic', name: 'Pré-Anestésica', icon: UserCheck }, // NOVA ABA
+    { id: 'identification', name: 'Identificação', icon: IdCardLanyard },
+    { id: 'preanesthetic', name: 'Pré-Anestésica', icon: UserCheck },
     { id: 'medications', name: 'Medicações', icon: Pill },
     { id: 'vitals', name: 'Sinais Vitais', icon: Activity },
     { id: 'description', name: 'Descrição', icon: FileText },
@@ -176,52 +177,101 @@ const SurgeryDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header fixo - Mobile optimized */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
-        <div className="px-4 py-3">
+      {/* Header da Cirurgia - Sempre fixo no topo */}
+      <div
+        data-surgery-header
+        // Header da cirurgia
+        className="bg-white shadow-sm border-b fixed top-0 left-0 lg:left-64 right-0 z-40"
+      >
+        <div className="px-3 py-2 md:px-4 md:py-3">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate('/dashboard')}
-              className="p-2 -ml-2 text-gray-400 hover:text-gray-600 rounded-lg"
+              className="p-1 md:p-2 -ml-1 md:-ml-2 text-gray-400 hover:text-gray-600 rounded-lg"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
             </button>
-            
-            <div className="flex-1 min-w-0 mx-3">
+
+            <div className="flex-1 min-w-0 mx-2 md:mx-3">
               <div className="text-center">
-                <h1 className="text-lg font-semibold text-gray-900 font-mono">
+                <h1 className="text-base md:text-lg font-semibold text-gray-900 font-mono">
                   {surgery.id}
                 </h1>
-                <p className="text-sm text-gray-600 truncate">
+                <p className="text-xs md:text-sm text-gray-600 truncate">
                   {surgery.patientName || 'Paciente não informado'}
                 </p>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-                <div className="text-right">
-                    <div className="flex items-center text-sm font-medium text-primary-600">
-                    <Clock className="h-4 w-4 mr-1" />
-                    {getElapsedTime()}
-                    </div>
-                    {surgery.status === 'completado' && (
-                    <div className="flex items-center text-xs text-green-600">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Finalizada
-                    </div>
-                    )}
-                    {saving && (
-                    <p className="text-xs text-gray-500">Salvando...</p>
-                    )}
+
+            <div className="flex items-center">
+              <div className="text-right">
+                <div className="flex items-center text-xs md:text-sm font-medium text-primary-600">
+                  <Clock className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+                  {getElapsedTime()}
                 </div>
-                </div>
+                {surgery.status === 'completado' && (
+                  <div className="flex items-center text-xs text-green-600">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <span className="hidden sm:inline">Finalizada</span>
+                  </div>
+                )}
+                {saving && (
+                  <p className="text-xs text-gray-500">Salvando...</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex h-screen pt-16">
-        {/* Sidebar - Cirurgias ativas (Hidden on mobile, show on tablet+) */}
-        <div className="hidden md:block w-64 bg-white border-r border-gray-200 overflow-y-auto">
+      {/* Tabs de Navegação - Fixa abaixo do header da cirurgia */}
+      <div 
+        // Headers e tabs respeitam apenas a sidebar esquerda
+        className="bg-white border-b border-gray-200 fixed left-0 lg:left-64 right-0 z-40"
+        style={{ top: '64px' }} // Altura do header da cirurgia
+      >
+        <div className="flex gap-1 px-2 lg:justify-end">
+          {sections.map((section) => {
+            const Icon = section.icon;
+            const isActive = activeSection === section.id;
+
+            return (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`
+                  flex items-center justify-center transition-all duration-200 ease-in-out
+                  ${isActive 
+                    ? 'px-4 py-3 text-sm font-semibold border-b-3 border-primary-500 text-primary-700 bg-primary-100 shadow-sm rounded-t-lg' 
+                    : 'px-3 py-3 text-xs md:text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-t-lg'
+                  }
+                `}
+              >
+                {/* MOBILE: Ícone sempre, texto só se ativo */}
+                <Icon className={`h-5 w-5 md:h-4 md:w-4 ${isActive ? 'mr-2' : 'md:mr-2'}`} />
+                
+                {/* Mobile: texto só na tab ativa */}
+                {isActive && (
+                  <span className="whitespace-nowrap md:hidden">
+                    {section.name}
+                  </span>
+                )}
+                
+                {/* Desktop: texto sempre visível */}
+                <span className="hidden md:inline whitespace-nowrap">
+                  {section.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Layout principal com sidebar e conteúdo */}
+      <div className="flex" style={{ paddingTop: '120px' }}> {/* Espaço para headers fixos */}
+        
+        {/* Sidebar com cirurgias ativas - Desktop apenas */}
+        <div className="hidden md:block w-64 bg-white border-r border-gray-200 h-screen overflow-y-auto z-10">
           <div className="p-4">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Cirurgias Ativas</h3>
             <div className="space-y-2">
@@ -247,92 +297,60 @@ const SurgeryDetail = () => {
           </div>
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Navegação por seções - Mobile tabs */}
-          <div className="bg-white border-b border-gray-200">
-            <div className="flex overflow-x-auto">
-              {sections.map((section) => {
-                const Icon = section.icon;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`flex-shrink-0 flex items-center px-4 py-3 text-sm font-medium border-b-2 ${
-                      activeSection === section.id
-                        ? 'border-primary-500 text-primary-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {section.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        {/* Conteúdo principal - Área scrollável */}
+        <div className="flex-1 bg-gray-50 h-screen overflow-y-auto">
+          <div className="p-3 md:p-4">
+            {activeSection === 'identification' && (
+              <IdentificationSection
+                surgery={surgery}
+                onDataChange={handleIdentificationChange}
+                autoSave={autoSave}
+              />
+            )}
 
-          {/* Content area */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4">
-              {/* Seção de Identificação */}
-              {activeSection === 'identification' && (
-                <IdentificationSection
-                  surgery={surgery}
-                  onDataChange={handleIdentificationChange}
-                  autoSave={autoSave}
-                />
-              )}
+            {activeSection === 'preanesthetic' && (
+              <PreAnestheticEvaluationSection
+                surgery={surgery}
+                onDataChange={handleIdentificationChange}
+                autoSave={autoSave}
+              />
+            )}
 
-              {/* NOVA SEÇÃO DE AVALIAÇÃO PRÉ-ANESTÉSICA */}
-              {activeSection === 'preanesthetic' && (
-                <PreAnestheticEvaluationSection
-                  surgery={surgery}
-                  onDataChange={handleIdentificationChange}
-                  autoSave={autoSave}
-                />
-              )}
+            {activeSection === 'medications' && (
+              <MedicationsSection
+                medications={medications}
+                surgery={surgery}
+                patientWeight={surgery.patientWeight}
+                onMedicationsChange={handleMedicationsChange}
+                autoSave={autoSave}
+              />
+            )}
 
-              {/* Seção de Medicações */}
-              {activeSection === 'medications' && (
-                <MedicationsSection
-                  medications={medications}
-                  surgery={surgery}
-                  patientWeight={surgery.patientWeight}
-                  onMedicationsChange={handleMedicationsChange}
-                  autoSave={autoSave}
-                />
-              )}
+            {activeSection === 'vitals' && (
+              <VitalSignsSection
+                vitalSigns={vitalSigns}
+                surgery={surgery}
+                onVitalSignsChange={handleVitalSignsChange}
+                autoSave={autoSave}
+              />
+            )}
 
-              {/* Seção de Sinais Vitais */}
-              {activeSection === 'vitals' && (
-                <VitalSignsSection
-                  vitalSigns={vitalSigns}
-                  surgery={surgery}
-                  onVitalSignsChange={handleVitalSignsChange}
-                  autoSave={autoSave}
-                />
-              )}
+            {activeSection === 'description' && (
+              <DescriptionSection
+                surgery={surgery}
+                onDataChange={handleIdentificationChange}
+                autoSave={autoSave}
+              />
+            )}
 
-              {/* Seção de Descrição */}
-              {activeSection === 'description' && (
-                <DescriptionSection
-                  surgery={surgery}
-                  onDataChange={handleIdentificationChange}
-                  autoSave={autoSave}
-                />
-              )}
-
-              {/* Seção de Pré-Visualização */}
-              {activeSection === 'preview' && (
-                <FichaPreview
-                  surgery={surgery}
-                  onEditSection={handleEditSection}
-                  autoSave={autoSave}          // ADICIONAR
-                  userProfile={userProfile}
-                />
-              )}
-            </div>
+            {activeSection === 'preview' && (
+              <FichaPreview
+                surgery={surgery}
+                onEditSection={handleEditSection}
+                autoSave={autoSave}
+                userProfile={userProfile}
+              />
+            )}
           </div>
         </div>
       </div>

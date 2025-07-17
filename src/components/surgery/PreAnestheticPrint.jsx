@@ -61,10 +61,14 @@ const PreAnestheticPrint = ({ surgery, onEditSection }) => {
   };
 
   const getHospitalName = () => {
-    if (typeof surgery?.hospital === 'string') {
-      return surgery.hospital;
+    try {
+      const hospital = typeof surgery?.hospital === 'string' 
+        ? JSON.parse(surgery.hospital) 
+        : surgery.hospital;
+      return hospital?.name || 'Não informado';
+    } catch {
+      return 'Não informado';
     }
-    return surgery?.hospital?.shortName || 'Hospital não informado';
   };
 
   const evaluation = surgery?.preAnestheticEvaluation || {};
@@ -196,15 +200,29 @@ const PreAnestheticPrint = ({ surgery, onEditSection }) => {
 
       {/* Ficha para impressão */}
       <div 
-        ref={componentRef}
-        className="bg-white p-4 print-page"
-        style={{ 
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '11px',
-          lineHeight: '1.2',
-          color: '#000'
+        className="overflow-auto flex justify-center items-start flex-shrink-0"
+        style={{
+          height: 'calc(100vh - 100px)', // altura ajustável, pode ser dinâmica
+          maxHeight: 'calc(100vh - 100px)'
         }}
       >
+        <div 
+          ref={componentRef}
+          className="bg-white px-4 py-2 print-page mx-auto origin-top scale-[0.47] sm:scale-100 print:scale-100 print:overflow-visible print:shadow-none print:border-0 print:p-8"
+          style={{
+            width: '794px',
+            minWidth: '794px',
+            maxWidth: '794px',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '11px',
+            lineHeight: '1.2',
+            color: '#000',
+            breakInside: 'avoid',
+            pageBreakInside: 'avoid',
+            boxShadow: 'none',
+            border: 'none'
+          }}
+        >
         {/* Cabeçalho */}
         <div className="border-b-2 border-gray-800 pb-2 mb-3">
           <div className="flex justify-between items-center">
@@ -556,6 +574,7 @@ const PreAnestheticPrint = ({ surgery, onEditSection }) => {
             Avaliação realizada em {new Date().toLocaleString('pt-BR')} | 
             <strong> Anestesiologista:</strong> {surgery.createdByName || 'N/A'}
           </div>
+        </div>
         </div>
       </div>
     </div>

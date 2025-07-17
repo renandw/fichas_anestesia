@@ -156,29 +156,43 @@ const getProcedureDisplay = (surgery) => {
     });
   };
 
-  // Calcular duração ou tempo decorrido
-  const getDuration = (surgery) => {
-    if (!surgery.createdAt) return 'N/A';
-    
-    const start = surgery.createdAt.seconds 
-      ? new Date(surgery.createdAt.seconds * 1000)
-      : new Date(surgery.createdAt);
-    
-    // AJUSTAR: usar completedAt em vez de finishedAt para consistência
-    const end = surgery.completedAt 
-      ? (surgery.completedAt.seconds 
-          ? new Date(surgery.completedAt.seconds * 1000)
-          : new Date(surgery.completedAt))
-      : new Date();
-    
-    const diffMinutes = Math.floor((end - start) / 1000 / 60);
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}min`;
+  // Calcular tempo decorrido (elapsed time)
+  const getElapsedTime = (surgery) => {
+    const baseTime = surgery?.startTime || surgery?.createdAt;
+    if (!baseTime) return '00:00';
+
+    let startDate;
+    if (baseTime.seconds) {
+      startDate = new Date(baseTime.seconds * 1000);
+    } else if (baseTime.toDate) {
+      startDate = baseTime.toDate();
+    } else if (typeof baseTime === 'string') {
+      startDate = new Date(baseTime);
+    } else {
+      startDate = new Date(baseTime);
     }
-    return `${minutes}min`;
+
+    let endDate = new Date();
+    const completed = surgery?.completedAt;
+    if (completed) {
+      if (completed.seconds) {
+        endDate = new Date(completed.seconds * 1000);
+      } else if (completed.toDate) {
+        endDate = completed.toDate();
+      } else if (typeof completed === 'string') {
+        endDate = new Date(completed);
+      } else {
+        endDate = new Date(completed);
+      }
+    }
+
+    const diff = Math.floor((endDate - startDate) / 1000 / 60);
+    if (diff < 0) return '00:00';
+
+    const hours = Math.floor(diff / 60);
+    const minutes = diff % 60;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   const quickActions = [
@@ -409,7 +423,7 @@ const getProcedureDisplay = (surgery) => {
                       {getStatusBadge(surgery.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {getDuration(surgery)}
+                      {getElapsedTime(surgery)}
                       {surgery.type && (
                         <div className="mt-1">
                           {getTypeBadge(surgery.type)}

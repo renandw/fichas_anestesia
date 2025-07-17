@@ -54,7 +54,7 @@ const VitalChart = ({
   }, [vitalSigns, surgeryStartDate]);
 
   // Componentes de forma customizados
-  const TriangleDown = ({ cx, cy, ...rest }) => (
+  const TriangleDown = ({ cx, cy, tooltipPosition, tooltipPayload, rawData, labelTime, tMin, ...rest }) => (
     <path 
       d={`M${cx - 6},${cy - 18} L${cx + 6},${cy - 18} L${cx},${cy} Z`} 
       fill="#d63031" 
@@ -62,7 +62,7 @@ const VitalChart = ({
     />
   );
   
-  const TriangleUp = ({ cx, cy, ...rest }) => (
+  const TriangleUp = ({ cx, cy, tooltipPosition, tooltipPayload, rawData, labelTime, tMin, ...rest }) => (
     <path 
       d={`M${cx - 6},${cy + 18} L${cx + 6},${cy + 18} L${cx},${cy} Z`} 
       fill="#d63031" 
@@ -70,7 +70,7 @@ const VitalChart = ({
     />
   );
 
-  const HeartShape = ({ cx, cy, ...rest }) => (
+  const HeartShape = ({ cx, cy, tooltipPosition, tooltipPayload, rawData, labelTime, tMin, ...rest }) => (
     <circle {...rest} cx={cx} cy={cy} r={5} fill="#000" />
   );
 
@@ -173,15 +173,10 @@ const VitalChart = ({
         </h4>
       )}
 
-      <div className="w-full flex justify-center">
+      <div className="w-full">
         <ResponsiveContainer width="100%" height={height}>
           <ScatterChart 
-            margin={{ 
-              top: 10, 
-              right: compact ? 5 : 10, 
-              bottom: compact ? 20 : 25, 
-              left: compact ? 25 : 30 
-            }}
+            margin={{ top: 4, right: 0, bottom: 12, left: 0 }}
           >
             <CartesianGrid stroke="#e5e5e5" strokeDasharray="3 3" />
 
@@ -206,11 +201,6 @@ const VitalChart = ({
               ticks={yTicks}
               tickCount={10}
               tick={{ fontSize: compact ? 8 : 10 }}
-              label={{ 
-                value: 'Valor', 
-                angle: -90, 
-                position: 'insideLeft' 
-              }}
             />
 
             {/* Séries de dados */}
@@ -277,7 +267,7 @@ const VitalChart = ({
       </div>
 
       {/* Legenda manual */}
-      <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-600 justify-center">
+      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-gray-600 justify-center leading-tight">
         <div className="flex items-center gap-1">
           <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[12px] border-l-transparent border-r-transparent border-t-red-600"></div>
           <span>PAS</span>

@@ -27,7 +27,7 @@ const PatientFormFields = ({
     defaultValues: {
       surgeryDate: initialData?.surgeryDate || '',
       surgeryTime: initialData?.surgeryTime || '',
-      hospital: typeof initialData?.hospital === 'string' ? initialData.hospital : initialData?.hospital?.shortName || '',
+      hospital: initialData?.hospital?.name || '',
       proposedSurgery: initialData?.proposedSurgery || '',
       performedSurgery: initialData?.performedSurgery || '',
       cbhpmProcedures: initialData?.cbhpmProcedures || [{ codigo: '', procedimento: '', porte_anestesico: '' }], // Array de procedimentos
@@ -167,13 +167,14 @@ const PatientFormFields = ({
   }));
 
   const positionOptions = [
-    'Supino',
-    'Prono', 
-    'Lateral direito',
-    'Lateral esquerdo',
+    'Decúbito Dorsal',
+    'Decúbito Ventral', 
+    'Decúbito Lateral direito',
+    'Decúbito Lateral esquerdo',
     'Trendelenburg',
-    'Semi-fowler',
-    'Litotomia'
+    'Canivete',
+    'Litotomia',
+    'Cadeira de Praia'
   ];
 
   // Calcular idade baseado na data de nascimento
@@ -229,7 +230,7 @@ const PatientFormFields = ({
       reset({
         surgeryDate: initialData?.surgeryDate || '',
         surgeryTime: initialData?.surgeryTime || '',
-        hospital: typeof initialData?.hospital === 'string' ? initialData.hospital : initialData?.hospital?.shortName || '',
+        hospital: typeof initialData?.hospital === 'string' ? initialData.hospital : initialData?.hospital?.name || '',
         proposedSurgery: initialData?.proposedSurgery || '',
         performedSurgery: initialData?.performedSurgery || '',
         cbhpmProcedures: initialData?.cbhpmProcedures || [{ codigo: '', procedimento: '', porte_anestesico: '' }],
@@ -644,9 +645,20 @@ const PatientFormFields = ({
               >
                 <option value="">Selecione o convênio</option>
                 <option value="Unimed">Unimed</option>
-                <option value="Bradesco">Bradesco Saúde</option>
+                <option value="Bradesco">Bradesco</option>
                 <option value="Amil">Amil</option>
                 <option value="Sulamerica">SulAmérica</option>
+                <option value="ASSEFAZ">ASSEFAZ</option>
+                <option value="Astir">Astir</option>
+                <option value="Capesesp">Capesesp</option>
+                <option value="Cassi">Cassi</option>
+                <option value="Funsa">Funsa</option>
+                <option value="Fusex">Fusex</option>
+                <option value="Geap">Geap</option>
+                <option value="Ipam">Ipam</option>
+                <option value="Life">Life</option>
+                <option value="Saude Caixa">Saúde Caixa</option>
+                <option value="Innova">Innova</option>
                 <option value="Particular">Particular</option>
                 <option value="outros">Outros</option>
               </select>

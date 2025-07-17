@@ -4,9 +4,8 @@ import {
   Calendar,
   User,
   Users,
-  CreditCard,
-  AlertCircle,
-  Save
+  Save,
+  Edit3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -55,12 +54,14 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
 
   // Exibir valor do hospital baseado no tipo
   const getHospitalDisplay = () => {
-    if (typeof surgery?.hospital === 'string') {
-      return surgery.hospital; // Convênio
-    } else if (surgery?.hospital?.shortName) {
-      return surgery.hospital.shortName; // SUS
+    try {
+      const hospital = typeof surgery?.hospital === 'string' 
+        ? JSON.parse(surgery.hospital) 
+        : surgery.hospital;
+      return hospital?.name || 'Não informado';
+    } catch {
+      return 'Não informado';
     }
-    return 'Não informado';
   };
 
   // Exibir idade calculada
@@ -88,7 +89,7 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
     let ageText = '';
     if (years > 0) {
       ageText += `${years} ano${years !== 1 ? 's' : ''}`;
-      if (months > 0) ageText += `, ${months} mês${months !== 1 ? 'es' : ''}`;
+      if (months > 0) ageText += `, ${months} ${months !== 1 ? 'meses' : 'mês'}`;
     } else if (months > 0) {
       ageText += `${months} mês${months !== 1 ? 'es' : ''}`;
       if (days > 0) ageText += `, ${days} dia${days !== 1 ? 's' : ''}`;
@@ -105,12 +106,12 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
       return (
         <div className="space-y-2">
           <div>
-            <label className="text-sm font-medium text-gray-600">Cirurgia Proposta</label>
+            <label className="text-gray-500 text-xs uppercase tracking-wide">Cirurgia Proposta</label>
             <p className="text-sm text-gray-900">{surgery?.proposedSurgery || 'Não informado'}</p>
           </div>
           {surgery?.performedSurgery && (
             <div>
-              <label className="text-sm font-medium text-gray-600">Cirurgia Realizada</label>
+              <label className="text-gray-500 text-xs uppercase tracking-wide">Cirurgia Realizada</label>
               <p className="text-sm text-gray-900">{surgery.performedSurgery}</p>
             </div>
           )}
@@ -119,16 +120,18 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
     } else if (surgery?.type === 'convenio' && surgery?.cbhpmProcedures) {
       return (
         <div>
-          <label className="text-sm font-medium text-gray-600">Procedimentos CBHPM</label>
+          <label className="text-gray-500 text-xs uppercase tracking-wide inline-block bg-blue-50 text-blue-800 font-medium px-2 py-1 rounded-full">
+            Procedimentos
+          </label>
           <div className="space-y-2">
             {surgery.cbhpmProcedures.map((proc, index) => (
               proc.codigo && (
                 <div key={index} className="flex items-center justify-between">
                   <p className="text-sm text-gray-900">
-                    {proc.codigo} - {proc.procedimento}
+                   {proc.codigo} - {proc.procedimento}
                   </p>
                   {proc.porte_anestesico && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                       Porte: {proc.porte_anestesico}
                     </span>
                   )}
@@ -151,71 +154,36 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           <h3 className="text-lg font-semibold text-gray-900">Dados de Identificação</h3>
           <button
             onClick={() => setIsEditing(true)}
-            className="btn-secondary flex items-center"
+            className="btn-secondary bg-red-500 text-white flex items-center"
           >
-            <AlertCircle className="h-4 w-4 mr-2" />
+            <Edit3 className="h-4 w-4 mr-2 text-white" />
             Editar
           </button>
         </div>
 
-        {/* Dados básicos da cirurgia */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <div className="flex items-center mb-4">
-            <Calendar className="h-5 w-5 text-primary-600 mr-2" />
-            <h4 className="font-medium text-gray-900">Dados da Cirurgia</h4>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600">Data</label>
-              <p className="text-sm text-gray-900">{surgery?.surgeryDate || 'Não informado'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600">Horário</label>
-              <p className="text-sm text-gray-900">{surgery?.surgeryTime || 'Não informado'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600">Tipo</label>
-              <p className="text-sm text-gray-900">
-                {surgery?.type === 'sus' ? 'SUS' : surgery?.type === 'convenio' ? 'Convênio' : 'Não definido'}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="text-sm font-medium text-gray-600">Hospital</label>
-            <p className="text-sm text-gray-900">{getHospitalDisplay()}</p>
-          </div>
-
-          {/* Procedimentos */}
-          <div className="mt-4">
-            {getProceduresDisplay()}
-          </div>
-        </div>
-
         {/* Dados do paciente */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <div className="flex items-center mb-4">
-            <User className="h-5 w-5 text-primary-600 mr-2" />
-            <h4 className="font-medium text-gray-900">Dados do Paciente</h4>
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-2 text-primary-600 mb-4">
+            <User className="h-5 w-5" />
+            <h4 className="font-semibold text-base text-gray-800">Dados do Paciente</h4>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600">Nome</label>
-              <p className="text-sm text-gray-900">{surgery?.patientName || 'Não informado'}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Nome</span>
+              <span className="font-medium text-gray-800">{surgery?.patientName || 'Não informado'}</span>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600">Idade</label>
-              <p className="text-sm text-gray-900">{getCalculatedAge()}</p>
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Idade</span>
+              <span className="font-medium text-gray-800">{getCalculatedAge()}</span>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600">Sexo</label>
-              <p className="text-sm text-gray-900 capitalize">{surgery?.patientSex || 'Não informado'}</p>
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Sexo</span>
+              <span className="font-medium text-gray-800 capitalize">{surgery?.patientSex || 'Não informado'}</span>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600">Peso</label>
-              <p className="text-sm text-gray-900">{surgery?.patientWeight ? `${surgery.patientWeight} kg` : 'Não informado'}</p>
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Peso</span>
+              <span className="font-medium text-gray-800">{surgery?.patientWeight ? `${surgery.patientWeight} kg` : 'Não informado'}</span>
             </div>
           </div>
 
@@ -247,21 +215,88 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           )}
         </div>
 
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-2 text-primary-600 mb-4">
+            <Calendar className="h-5 w-5" />
+            <h4 className="font-semibold text-base text-gray-800">Dados da Cirurgia</h4>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Data</span>
+              <span className="font-medium text-gray-800">{surgery?.surgeryDate || 'Não informado'}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Horário</span>
+              <span className="font-medium text-gray-800">{surgery?.surgeryTime || 'Não informado'}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Tipo</span>
+              <span className="font-medium text-gray-800 capitalize">
+                {surgery?.type === 'sus' ? 'SUS' : surgery?.type === 'convenio' ? 'Convênio' : 'Não definido'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Hospital</span>
+              <span className="font-medium text-gray-800">{getHospitalDisplay()}</span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            {surgery?.type === 'sus' ? (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Cirurgia Proposta</label>
+                  <p className="text-sm text-gray-900">{surgery?.proposedSurgery || 'Não informado'}</p>
+                </div>
+                {surgery?.performedSurgery && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Cirurgia Realizada</label>
+                    <p className="text-sm text-gray-900">{surgery.performedSurgery}</p>
+                  </div>
+                )}
+              </div>
+            ) : surgery?.type === 'convenio' && surgery?.cbhpmProcedures ? (
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-wide inline-block bg-blue-50 text-blue-800 font-medium px-2 py-1 rounded-full">
+                  Procedimentos
+                </label>
+                <div className="space-y-2 mt-2">
+                  {[...surgery.cbhpmProcedures]
+                    .sort((a, b) => (parseInt(b.porte_anestesico) || 0) - (parseInt(a.porte_anestesico) || 0))
+                    .map((proc, index) => (
+                      proc.codigo && (
+                        <div key={index} className="border rounded-lg p-3 bg-white shadow-sm">
+                          <p className="font-medium text-sm text-gray-800">
+                            {proc.procedimento} - {proc.codigo}
+                          </p>
+                          {proc.porte_anestesico && (
+                            <p className="text-sm font-bold text-blue-800 mt-1">Porte: {proc.porte_anestesico}</p>
+                          )}
+                        </div>
+                      )
+                    ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
         {/* Dados da equipe */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <div className="flex items-center mb-4">
-            <Users className="h-5 w-5 text-primary-600 mr-2" />
-            <h4 className="font-medium text-gray-900">Equipe Cirúrgica</h4>
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-2 text-primary-600 mb-4">
+            <Users className="h-5 w-5" />
+            <h4 className="font-semibold text-base text-gray-800">Equipe Cirúrgica</h4>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600">Cirurgião Principal</label>
-              <p className="text-sm text-gray-900">{surgery?.mainSurgeon || 'Não informado'}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Cirurgião Principal</span>
+              <span className="font-medium text-gray-800">{surgery?.mainSurgeon || 'Não informado'}</span>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600">Posicionamento</label>
-              <p className="text-sm text-gray-900 capitalize">{surgery?.patientPosition || 'Não informado'}</p>
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-xs uppercase tracking-wide">Posicionamento</span>
+              <span className="font-medium text-gray-800 capitalize">{surgery?.patientPosition || 'Não informado'}</span>
             </div>
           </div>
 

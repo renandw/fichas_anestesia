@@ -30,6 +30,9 @@ const Layout = () => {
     return location.pathname === path;
   };
 
+  // Verificar se está na página de cirurgia
+  const isSurgeryPage = location.pathname.startsWith('/surgery/');
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
@@ -130,25 +133,27 @@ const Layout = () => {
 
       {/* Main content */}
       <div className="lg:pl-64">
-        {/* Top bar for mobile */}
-        <div className="lg:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex items-center">
-            <Stethoscope className="h-6 w-6 text-primary-600" />
-            <span className="ml-2 text-lg font-semibold text-gray-900">Fichas</span>
+        {/* Top bar for mobile - ESCONDIDA na página de cirurgia */}
+        {!isSurgeryPage && (
+          <div className="lg:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <div className="flex items-center">
+              <Stethoscope className="h-6 w-6 text-primary-600" />
+              <span className="ml-2 text-lg font-semibold text-gray-900">Fichas</span>
+            </div>
+            <div className="w-6"></div>
           </div>
-          <div className="w-6"></div>
-        </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={`${isSurgeryPage ? '' : 'py-6'}`}>
+            <div className={`${isSurgeryPage ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}`}>
               <Outlet />
             </div>
           </div>

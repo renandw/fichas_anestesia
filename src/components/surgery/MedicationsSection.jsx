@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pill, Plus, X, Edit2, Check, XCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Pill, Plus, X, Syringe, Check, XCircle, Edit3, Trash } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const MedicationsSection = ({ 
@@ -13,10 +13,14 @@ const MedicationsSection = ({
   const [dose, setDose] = useState('');
   const [via, setVia] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [editingMedication, setEditingMedication] = useState(null);
+  const [activeEditPopover, setActiveEditPopover] = useState(null);
   const [editDose, setEditDose] = useState('');
   const [editVia, setEditVia] = useState('');
   const [editTime, setEditTime] = useState('');
+  const editButtonRefs = useRef({});
+  const addButtonRef = useRef(null);
+  const presetButtonRef = useRef(null);
+  const [editPopoverPosition, setEditPopoverPosition] = useState({ top: 0, left: 0 });
 
   const getSurgeryBaseTime = () => {
     if (!surgery?.createdAt) {
@@ -161,7 +165,7 @@ const MedicationsSection = ({
     }
     
     // Anestésicos inalatórios - via inalatória não está na lista, usar EV como padrão
-    if (name.includes('sevoflurano') || name.includes('desflurano') || name.includes('isoflurano')) {
+    if (name.includes('sevoflurano') || name.includes('desflurano') || name.includes('oxigênio') || name.includes('comprimido') || name.includes('isoflurano')) {
       return 'VR'; // Placeholder, idealmente seria "INAL"
     }
     
@@ -259,8 +263,8 @@ const MedicationsSection = ({
     { name: 'Desflurano', category: 'Anestésico Inalatório' },
     { name: 'Isoflurano', category: 'Anestésico Inalatório' },
     { name: 'Óxido nitroso', category: 'Anestésico Inalatório' },
-    { name: 'Oxigênio', category: 'Gases Frescos' },
-    { name: 'Gás Comprimido', category: 'Gases Frescos' },
+    { name: 'Oxigênio',  category: 'Gases Frescos' },
+    { name: 'Ar Comprimido', category: 'Gases Frescos' },
     
     // Anestésicos Endovenosos
     { name: 'Propofol', category: 'Hipnótico' },
@@ -326,7 +330,11 @@ const MedicationsSection = ({
     { name: 'Gentamicina', category: 'Antibiótico' },
     { name: 'Ciprofloxacino', category: 'Antibiótico' },
     { name: 'Ampicilina', category: 'Antibiótico' },
-    
+
+    // Anticonvulsivantes
+    { name: 'Fenitoína', category: 'Anticonvulsivante' },
+    { name: 'Fenobarbital', category: 'Anticonvulsivante' },
+
     // Antiarritmicos
     { name: 'Amiodarona', category: 'Antiarritmico' },
 
@@ -341,7 +349,7 @@ const MedicationsSection = ({
     { name: 'Hidralazina', category: 'Hipotensor' },
     { name: 'Salbutamol (inalado)', category: 'Beta-2 Agonista' },
     { name: 'Hidrocortisona', category: 'Corticoide' },
-    { name: 'Sulfato de Magnésio', category: 'Broncodilatador' },
+    { name: 'Sulfato de Magnésio', category: 'Hidroeletrolítico' },
     { name: 'Prometazina', category: 'Antialérgico' },
     { name: 'Gluconato de Cálcio 10%', category: 'Hidroeletrolítico' },
     { name: 'Bicarbonato de Sódio 8,4%', category: 'Hidroeletrolítico' },
@@ -355,7 +363,7 @@ const MedicationsSection = ({
 
 
     // Reversores
-    { name: 'Neostigmina', category: 'Reversor' },
+    { name: 'Neostigmina', category: 'Colinérgico' },
     { name: 'Atropina', category: 'Anticolinérgico' },
     { name: 'Sugammadex', category: 'Reversor' },
     
@@ -404,23 +412,7 @@ const MedicationsSection = ({
     toast.success(`${preset.name} adicionado (${newMedications.length} medicações)`);
   };
 
-  // Iniciar edição de medicação
-  const startEdit = (medication) => {
-    setEditingMedication(medication.id);
-    setEditDose(medication.dose || '');
-    setEditVia(medication.via || 'EV'); // Padrão EV se não existir via
-    // ADICIONAR esta linha:
-    setEditTime(medication.time || getSurgeryBaseTime());
-  };
-
-  // Cancelar edição
-  const cancelEdit = () => {
-    setEditingMedication(null);
-    setEditDose('');
-    setEditVia('');
-    // ADICIONAR esta linha:
-    setEditTime('');
-  };
+  // Iniciar edição de medicação (removido)
 
   // Salvar edição
   const saveEdit = async (medId) => {
@@ -433,22 +425,21 @@ const MedicationsSection = ({
       return;
     }
 
-    const updatedMedications = medications.map(med => 
-      med.id === medId 
+    const updatedMedications = medications.map(med =>
+      med.id === medId
         ? { ...med, dose: editDose.trim(), via: editVia.trim(), time: editTime }
         : med
     );
-    
+
     onMedicationsChange(updatedMedications);
-    setEditingMedication(null);
     setEditDose('');
     setEditVia('');
     setEditTime('');
-    
+
     if (autoSave) {
       await autoSave({ medications: updatedMedications });
     }
-    
+
     toast.success('Medicação atualizada');
   };
 
@@ -527,232 +518,302 @@ const MedicationsSection = ({
     return a.name.localeCompare(b.name);
   });
 
+  // Agrupar medicações por tipo de via de administração
+  const groupedMedications = viasAdministracao
+    .map(via => ({
+      viaCode: via.code,
+      viaName: via.name,
+      medications: orderedMedications.filter(med => (med.via || 'EV') === via.code)
+    }))
+    .filter(group => group.medications.length > 0);
+
   return (
     <div className="space-y-6">
       {/* Medicações aplicadas */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-3">
-          Medicações Aplicadas ({medications.length})
-        </h3>
-        
-        {medications.length > 0 ? (
-          <div className="space-y-2">
-            {orderedMedications.map((med) => (
-              <div key={med.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex flex-col leading-tight">
-                      <span className="font-semibold text-base text-gray-900 break-words">{med.name}</span>
-                      <span className={`text-xs font-semibold mt-0.5 ${getCategoryColor(med.category).replace(/bg-[^ ]+/, '')}`}>
-                        {med.category}
-                      </span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-600 gap-1 sm:gap-0">
-                      {editingMedication === med.id ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
-                          <input
-                            type="text"
-                            value={editDose}
-                            onChange={(e) => setEditDose(e.target.value)}
-                            className="px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 w-full"
-                            placeholder="Dose"
-                          />
-                          <select
-                            value={editVia}
-                            onChange={(e) => setEditVia(e.target.value)}
-                            className="px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 w-full"
-                          >
-                            {viasAdministracao.map(via => (
-                              <option key={via.code} value={via.code}>{via.code}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="time"
-                            step="60"
-                            value={editTime}
-                            onChange={(e) => setEditTime(e.target.value)}
-                            className="px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 w-full"
-                          />
-                          <div className="flex gap-2 sm:col-span-3">
-                            <button
-                              onClick={() => saveEdit(med.id)}
-                              className="flex-1 px-3 py-2 text-white bg-green-600 hover:bg-green-700 rounded text-sm"
-                            >
-                              Salvar
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm text-gray-800"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium">{med.dose}</span>
-                            <span
-                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-800"
-                              title={getViaName(med.via || 'EV')}
-                            >
-                              {med.via || 'EV'}
-                            </span>
-                          </div>
-                          <span className="text-gray-500">{med.time}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {editingMedication !== med.id && (
-                    <div className="flex flex-col gap-1 ml-2">
-                      <button
-                        onClick={() => startEdit(med)}
-                        className="flex items-center justify-center gap-1 px-3 py-1.5 text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-full text-xs font-medium transition-colors"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => removeMedication(med.id)}
-                        className="flex items-center justify-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-full transition-colors"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+        <div className="flex flex-col gap-2 mb-3">
+          <h3 className="text-lg font-medium text-gray-900">
+            Medicações Aplicadas ({medications.length})
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              ref={addButtonRef}
+              onClick={() => {
+                if (addButtonRef.current) {
+                  const rect = addButtonRef.current.getBoundingClientRect();
+                  setEditPopoverPosition({
+                    top: rect.bottom + window.scrollY + 4,
+                    left: Math.min(rect.left + window.scrollX, window.innerWidth - 340),
+                  });
+                }
+                setActiveEditPopover('add');
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors w-fit"
+            >
+              <Plus className="w-4 h-4" />
+              Adicionar
+            </button>
+            <button
+              ref={presetButtonRef}
+              onClick={() => {
+                if (presetButtonRef.current) {
+                  const rect = presetButtonRef.current.getBoundingClientRect();
+                  setEditPopoverPosition({
+                    top: rect.bottom + window.scrollY + 4,
+                    left: Math.min(rect.left + window.scrollX, window.innerWidth - 420),
+                  });
+                }
+                setActiveEditPopover('preset');
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors w-fit"
+            >
+              <Syringe className="w-4 h-4" />
+              Presets de Anestesia
+            </button>
           </div>
+        </div>
+
+        {groupedMedications.length > 0 ? (
+          groupedMedications.map(group => (
+            <div key={group.viaCode} className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                {group.viaCode} - {group.viaName}
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs text-gray-700 border border-gray-300 rounded-md">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-2 py-1 text-left font-semibold">Medicação</th>
+                      <th className="px-2 py-1 text-left font-semibold">Dose</th>
+                      <th className="px-2 py-1 text-left font-semibold">Hora</th>
+                      <th className="px-2 py-1 text-left font-semibold">Categoria</th>
+                      <th className="px-2 py-1 text-left font-semibold">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.medications.map((med) => (
+                      <tr key={med.id} className="border-t border-gray-200">
+                        <td className="px-2 py-1 font-medium">{med.name}</td>
+                        <td className="px-2 py-1">{med.dose}</td>
+                        <td className="px-2 py-1">{med.time}</td>
+                        <td className="px-2 py-1">
+                          <span className={`inline-block px-2 py-0.5 rounded ${getCategoryColor(med.category)}`}>
+                            {med.category}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1">
+                          <div className="relative flex gap-1 items-center">
+                            <button
+                              ref={(el) => (editButtonRefs.current[med.id] = el)}
+                              onClick={() => {
+                                const rect = editButtonRefs.current[med.id].getBoundingClientRect();
+                                setEditPopoverPosition({
+                                  top: rect.bottom + window.scrollY + 4,
+                                  left: Math.min(rect.left + window.scrollX, window.innerWidth - 280),
+                                });
+                                setEditDose(med.dose);
+                                setEditTime(med.time || '');
+                                setEditVia(med.via || '');
+                                setActiveEditPopover(activeEditPopover === med.id ? null : med.id);
+                              }}
+                              className="p-1 bg-gray-500 text-white rounded hover:bg-gray-200"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => removeMedication(med.id)}
+                              className="p-1 bg-red-600 text-white rounded hover:bg-red-200"
+                            >
+                              <Trash className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))
         ) : (
-          <div className="text-center py-6 text-gray-500">
-            <Pill className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-            <p className="text-sm">Nenhuma medicação aplicada ainda</p>
+          <div className="text-center py-8 px-4 text-gray-600 bg-gray-50 border border-dashed border-gray-300 rounded-md">
+            <Pill className="h-10 w-10 mx-auto mb-3 text-primary-400" />
+            <h4 className="text-md font-semibold mb-2">Nenhuma medicação registrada</h4>
+            <p className="text-sm mb-3">
+              Você pode começar adicionando medicações manualmente com o botão <strong>"Adicionar"</strong>,
+              ou utilizar um dos <strong>"Presets de Anestesia"</strong> com medicações sugeridas para o caso.
+            </p>
           </div>
         )}
       </div>
-
-      {/* Presets de medicações */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-3">
-          Presets Rápidos
-        </h3>
-        
-        <div className="grid grid-cols-1 gap-3">
-          {medicationPresets.map((preset, index) => (
-            <div key={index} className="bg-gradient-to-r from-primary-50 to-blue-50 p-4 rounded-lg border border-primary-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{preset.icon}</span>
-                  <h4 className="font-semibold text-gray-900 text-sm">{preset.name}</h4>
-                </div>
-                <button
-                  onClick={() => addPreset(preset)}
-                  className="px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded-md hover:bg-primary-700 transition-colors"
-                >
-                  Adicionar
-                </button>
-              </div>
-              <div className="text-xs text-gray-600">
-                {preset.medications.map((med, i) => (
-                  <span key={i}>
-                    {med.name} {med.dose} ({med.via})
-                    {i < preset.medications.length - 1 ? ' • ' : ''}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Adicionar medicação com autocomplete */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-3">
-          Adicionar Medicação
-        </h3>
-        
-        <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Medicação
-            </label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setSelectedMedication('');
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              placeholder="Digite o nome da medicação..."
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
-            />
-            
-            {showSuggestions && searchTerm && filteredMedications.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredMedications.map((medication, index) => (
-                  <button
-                    key={index}
-                    onClick={() => selectMedication(medication)}
-                    className="w-full text-left px-3 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                  >
-                    <div className="font-medium text-gray-900">{medication.name}</div>
-                    <div className="text-xs text-gray-500">{medication.category}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Dose/Quantidade <span className="text-gray-400 text-xs">(ex: 2mg, 2g, 500ml)</span>
-            </label>
-            <input
-              type="text"
-              value={dose}
-              onChange={(e) => setDose(e.target.value)}
-              placeholder="Inclua a unidade de medida"
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Lembre-se de incluir a unidade de medida (mg, ml, g, etc.)
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Via de Administração
-            </label>
-            <select
-              value={via}
-              onChange={(e) => setVia(e.target.value)}
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-base bg-white"
-            >
-              <option value="">Selecione a via...</option>
-              {viasAdministracao.map(viaOption => (
-                <option key={viaOption.code} value={viaOption.code}>
-                  {viaOption.code} - {viaOption.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
+    {/* Edit Popover - Rendered at the end of component */}
+    {activeEditPopover && activeEditPopover !== 'add' && activeEditPopover !== 'preset' && (
+      <div
+        className="fixed z-50 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3"
+        style={{ top: editPopoverPosition.top, left: editPopoverPosition.left }}
+      >
+        <div className="absolute -top-2 left-8 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-white" />
+        <label className="block text-xs text-gray-700 mb-1">Dose</label>
+        <input
+          type="text"
+          value={editDose}
+          onChange={(e) => setEditDose(e.target.value)}
+          className="w-full px-2 py-1 border rounded text-xs mb-2"
+        />
+        <label className="block text-xs text-gray-700 mb-1">Hora</label>
+        <input
+          type="time"
+          value={editTime}
+          onChange={(e) => setEditTime(e.target.value)}
+          className="w-full px-2 py-1 border rounded text-xs mb-2"
+        />
+        <div className="flex justify-end gap-2 mt-2">
           <button
-            onClick={addMedication}
-            disabled={!searchTerm || !searchTerm.trim() || !dose || !dose.trim() || !via || !via.trim()}
-            className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed text-base font-medium"
+            onClick={() => {
+              saveEdit(activeEditPopover);
+              setActiveEditPopover(null);
+            }}
+            className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1 rounded-full transition-colors"
           >
-            <Plus className="h-5 w-5 mr-2" />
-            Adicionar Medicação
+            Salvar
+          </button>
+          <button
+            onClick={() => setActiveEditPopover(null)}
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full transition-colors"
+          >
+            Cancelar
           </button>
         </div>
       </div>
-    </div>
+    )}
+    {activeEditPopover === 'add' && (
+      <div
+        className="fixed z-50 w-[320px] bg-white border border-gray-200 rounded-md shadow-lg p-4"
+        style={{
+          top: editPopoverPosition.top || 100,
+          left: editPopoverPosition.left || 20
+        }}
+      >
+        <div className="absolute -top-2 left-10 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-white" />
+        <label className="block text-xs text-gray-700 mb-1">Medicação</label>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setSelectedMedication('');
+            setShowSuggestions(true);
+          }}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          placeholder="Digite o nome da medicação..."
+          className="w-full px-2 py-1 border rounded text-xs mb-2"
+        />
+        {showSuggestions && searchTerm && filteredMedications.length > 0 && (
+          <div className="border rounded bg-white shadow-sm max-h-40 overflow-y-auto text-xs mb-2">
+            {filteredMedications.map((medication, index) => (
+              <button
+                key={index}
+                onClick={() => selectMedication(medication)}
+                className="block w-full text-left px-2 py-1 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+              >
+                {medication.name} <span className="text-gray-400">({medication.category})</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <label className="block text-xs text-gray-700 mb-1">Dose</label>
+        <input
+          type="text"
+          value={dose}
+          onChange={(e) => setDose(e.target.value)}
+          placeholder="Ex: 2mg, 1g"
+          className="w-full px-2 py-1 border rounded text-xs mb-2"
+        />
+
+        <label className="block text-xs text-gray-700 mb-1">Via</label>
+        <select
+          value={via}
+          onChange={(e) => setVia(e.target.value)}
+          className="w-full px-2 py-1 border rounded text-xs mb-3 bg-white"
+        >
+          <option value="">Selecione a via...</option>
+          {viasAdministracao.map(viaOption => (
+            <option key={viaOption.code} value={viaOption.code}>
+              {viaOption.code} - {viaOption.name}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              addMedication();
+              setActiveEditPopover(null);
+            }}
+            className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold px-3 py-1 rounded-full transition-colors"
+          >
+            Adicionar
+          </button>
+          <button
+            onClick={() => setActiveEditPopover(null)}
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    )}
+    {activeEditPopover === 'preset' && (
+      <div
+        className="fixed z-50 w-[400px] bg-white border border-gray-200 rounded-md shadow-lg p-4"
+        style={{
+          top: editPopoverPosition.top || 120,
+          left: editPopoverPosition.left || 40
+        }}
+      >
+        <div className="absolute -top-2 left-6 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-white" />
+        <h4 className="text-sm font-semibold mb-2">Escolha um Preset</h4>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {medicationPresets.map((preset, idx) => (
+            <div key={idx} className="flex items-center justify-between p-2 rounded hover:bg-blue-50 transition-colors">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{preset.icon}</span>
+                <div className="flex flex-col">
+                  <span className="font-medium text-gray-800 text-xs">{preset.name}</span>
+                  <div className="text-[10px] text-gray-500 space-y-0.5 mt-1">
+                    {preset.medications.map((m, i) => (
+                      <div key={i}>
+                        {m.name} {m.dose} <span className="text-gray-400">({m.via})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  addPreset(preset);
+                  setActiveEditPopover(null);
+                }}
+                className="px-2 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700"
+              >
+                Adicionar
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end mt-3">
+          <button
+            onClick={() => setActiveEditPopover(null)}
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 

@@ -154,7 +154,20 @@ d) Sem acidentes de punção, retorno de líquor ou sangue. Teste de injeção d
 	  7.	Revisado posicionamento do paciente e proteção ocular.
 	  8.	Ao término da cirurgia: aspiração das vias aéreas, suspensão dos agentes anestésicos, reversão do bloqueio neuromuscular conforme protocolo.
       9.	Encaminhado à RPA/UTI em boas condições clínicas.`
-      }  
+      },
+    sedacaopediatrica: {
+        name: 'Sedação Pediátrica',
+        icon: Heart,
+        color: 'bg-indigo-500 hover:bg-indigo-600',
+        template: ` Sedação:
+        1.	Paciente admitido em sala cirúrgica. Realizada checagem da via aérea e funcionamento da estação de anestesia. Anamnese e exame físico realizados.
+      2.	Monitorização padrão iniciada (ECG, oximetria, PNI). Acesso venoso periférico em MSD verificado e pérvio.
+      3.	Sedação sob sistema Baraka Mapleson A com medicações descritas na seção de medicações.
+      4.	Reviso posicionamento do paciente
+      5.	Paciente permaneceu sem depressão respiratória e hemodinâmicamente estável
+      6.	Ao término da cirurgia: Paciente com respiração espontânea, ativo e reativo, boa mecânica ventilatória e oximetria estável.
+      7.	Encaminhado à RPA em boas condições clínicas.`
+      }    
   };
 
   // Atualizar estado local quando surgery muda
@@ -306,7 +319,7 @@ d) Sem acidentes de punção, retorno de líquor ou sangue. Teste de injeção d
       {/* Header do modo edição */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">
-          Editando Descrição do Procedimento
+          Descrição do Procedimento Anestésico
         </h3>
         <div className="flex items-center space-x-2">
           {isSaving && (

@@ -49,6 +49,10 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
       musculoskeletalOther: surgery?.preAnestheticEvaluation?.musculoskeletalOther || '',
       genitourinary: surgery?.preAnestheticEvaluation?.genitourinary || {},
       genitourinaryOther: surgery?.preAnestheticEvaluation?.genitourinaryOther || '',
+      neurologic: surgery?.preAnestheticEvaluation?.neurologic || {},
+      neurologicOther: surgery?.preAnestheticEvaluation?.neurologicOther || '',
+      geneticSyndromes: surgery?.preAnestheticEvaluation?.geneticSyndromes || {},
+      geneticSyndromeOther: surgery?.preAnestheticEvaluation?.geneticSyndromeOther || '',
 
       // Histórico
       noPreviousSurgeries: surgery?.preAnestheticEvaluation?.noPreviousSurgeries || false,
@@ -174,37 +178,168 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
     toast.success('Paciente hígido marcado!');
   };
 
+  // Rótulos amigáveis para os campos internos
+  const LABELS = {
+    cardiovascular: {
+      hypertension: 'HAS',
+      heartFailure: 'ICC',
+      coronaryDisease: 'DAC',
+      arrhythmias: 'Arritmias',
+      valvular: 'Valvulopatias',
+      none: 'Sem diagnóstico de doença cardiovascular'
+    },
+    respiratory: {
+      asthma: 'Asma',
+      copd: 'DPOC',
+      sleepApnea: 'Apneia do sono',
+      smoking: 'Tabagismo',
+      none: 'Sem diagnóstico respiratório'
+    },
+    endocrine: {
+      diabetes: 'Diabetes',
+      hypothyroidism: 'Hipotireoidismo',
+      hyperthyroidism: 'Hipertireoidismo',
+      obesity: 'Obesidade',
+      none: 'Sem diagnóstico endócrino'
+    },
+    airwayFindings: {
+      mouthOpening: 'Abertura bucal > 3cm',
+      neckLimitation: 'Limitação cervical',
+      looseTeeth: 'Dentes soltos',
+      dentures: 'Próteses dentárias',
+      beard: 'Barba densa',
+      none: 'Sem alterações'
+    },
+    anestheticTechnique: {
+      generalBalanced: 'Geral Balanceada',
+      generalTIVA: 'Geral Venosa Total',
+      spinal: 'Raquianestesia',
+      epidural: 'Peridural',
+      sedation: 'Sedação',
+      local: 'Local',
+      block: 'Bloqueio',
+      combined: 'Combinada'
+    },
+    geneticSyndromes: {
+      none: 'Sem síndromes genéticas',
+      downSyndrome: 'Síndrome de Down',
+      other: 'Outras síndromes genéticas'
+    }
+  };
+
+  // Função para exibir listas de checkboxes marcados com rótulos
+  const renderCheckedList = (obj, otherText, labelMap = {}) => {
+    if (!obj || typeof obj !== 'object') return null;
+    if (obj.none) return labelMap.none || 'Sem alterações';
+
+    const checkedKeys = Object.keys(obj).filter(k => obj[k] && k !== 'none');
+    const translated = checkedKeys.map(k => labelMap[k] || k);
+    let result = translated.join(', ');
+
+    if (otherText && otherText.trim()) {
+      result = result ? result + ', ' + otherText : otherText;
+    }
+
+    return result || null;
+  };
+
   if (!isEditing) {
     // Modo visualização
     const evaluation = surgery?.preAnestheticEvaluation || {};
-    
+
+    // Verifica se algum campo de exames laboratoriais foi preenchido
+    const hasLabResults =
+      evaluation.labResults &&
+      Object.values(evaluation.labResults).some(v => v !== undefined && v !== null && v !== '');
+
+    // Verifica se algum campo de exames de imagem foi preenchido
+    const hasImaging =
+      evaluation.ecgStatus ||
+      (evaluation.ecgStatus === 'abnormal' && evaluation.ecgAbnormal) ||
+      evaluation.chestXrayStatus ||
+      (evaluation.chestXrayStatus === 'abnormal' && evaluation.chestXrayAbnormal) ||
+      (evaluation.otherExams && evaluation.otherExams.trim());
+
+    // Verifica se há alguma comorbidade marcada em qualquer sistema
+    const comorbSystems = [
+      ['Cardiovascular', evaluation.cardiovascular, evaluation.cardiovascularOther, LABELS.cardiovascular],
+      ['Respiratório', evaluation.respiratory, evaluation.respiratoryOther, LABELS.respiratory],
+      ['Endócrino', evaluation.endocrine, evaluation.endocrineOther, LABELS.endocrine],
+      ['Digestivo', evaluation.digestive, evaluation.digestiveOther, {}],
+      ['Hematológico', evaluation.hematologic, evaluation.hematologicOther, {}],
+      ['Ósseo/Muscular', evaluation.musculoskeletal, evaluation.musculoskeletalOther, {}],
+      ['Geniturinário', evaluation.genitourinary, evaluation.genitourinaryOther, {}],
+      ['Neurológico', evaluation.neurologic, evaluation.neurologicOther, {}],
+      // Adiciona Genética aqui
+      ['Genética', evaluation.geneticSyndromes, evaluation.geneticSyndromeOther, LABELS.geneticSyndromes],
+    ];
+    const hasAnyComorb = comorbSystems.some(
+      ([, obj, other]) =>
+        (obj && Object.keys(obj).some(k => obj[k])) || (other && other.trim())
+    );
+
+    // Verifica se há informações especiais preenchidas
+    const hasSpecialInfo =
+      evaluation.isPregnant ||
+      evaluation.isInfant;
+
+    // Verifica se existe algum dado preenchido
+    const hasAnyData =
+      evaluation.asaClassification ||
+      hasSpecialInfo ||
+      hasAnyComorb ||
+      evaluation.noPreviousSurgeries ||
+      (evaluation.previousSurgeries && evaluation.previousSurgeries.trim()) ||
+      evaluation.noAnestheticComplications ||
+      (evaluation.anestheticComplications && evaluation.anestheticComplications.trim()) ||
+      evaluation.currentMedications ||
+      evaluation.noAllergies ||
+      (evaluation.allergies && evaluation.allergies.trim()) ||
+      evaluation.mallampati ||
+      (evaluation.airwayFindings && Object.keys(evaluation.airwayFindings).some(k => evaluation.airwayFindings[k])) ||
+      (evaluation.airwayOther && evaluation.airwayOther.trim()) ||
+      (evaluation.physicalExam && evaluation.physicalExam.trim()) ||
+      hasLabResults ||
+      (evaluation.otherLabResults && evaluation.otherLabResults.trim()) ||
+      hasImaging ||
+      (evaluation.anestheticTechnique && Object.keys(evaluation.anestheticTechnique).some(k => evaluation.anestheticTechnique[k])) ||
+      (evaluation.combinedTechnique && evaluation.combinedTechnique.trim()) ||
+      evaluation.clearanceStatus;
+
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Avaliação Pré-Anestésica</h3>
           <button
             onClick={() => setIsEditing(true)}
-            className="btn-secondary flex items-center"
+            className="btn-secondary bg-red-500 text-white flex items-center"
           >
-            <Edit3 className="h-4 w-4 mr-2" />
+            <Edit3 className="h-4 w-4 sm:h-4 sm:w-4 mr-2" />
             Editar
           </button>
         </div>
 
         {/* Status de liberação - destaque no topo */}
         {evaluation.clearanceStatus && (
-          <div className={`p-4 rounded-lg border-2 ${
-            evaluation.clearanceStatus === 'cleared' 
-              ? 'bg-green-50 border-green-200' 
-              : evaluation.clearanceStatus === 'cleared_with_restrictions'
-              ? 'bg-yellow-50 border-yellow-200'
-              : 'bg-red-50 border-red-200'
-          }`}>
+          <div
+            className={`p-4 rounded-lg border-2 ${
+              evaluation.clearanceStatus === 'cleared'
+                ? 'bg-green-50 border-green-200'
+                : evaluation.clearanceStatus === 'cleared_with_restrictions'
+                ? 'bg-yellow-50 border-yellow-200'
+                : 'bg-red-50 border-red-200'
+            }`}
+          >
             <div className="flex items-center">
-              {evaluation.clearanceStatus === 'cleared' && <Check className="h-5 w-5 text-green-600 mr-2" />}
-              {evaluation.clearanceStatus === 'cleared_with_restrictions' && <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />}
-              {evaluation.clearanceStatus === 'not_cleared' && <X className="h-5 w-5 text-red-600 mr-2" />}
-              
+              {evaluation.clearanceStatus === 'cleared' && (
+                <Check className="h-5 w-5 text-green-600 mr-2" />
+              )}
+              {evaluation.clearanceStatus === 'cleared_with_restrictions' && (
+                <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
+              )}
+              {evaluation.clearanceStatus === 'not_cleared' && (
+                <X className="h-5 w-5 text-red-600 mr-2" />
+              )}
               <div>
                 <p className="font-medium">
                   {evaluation.clearanceStatus === 'cleared' && 'Liberado sem ressalvas'}
@@ -222,48 +357,238 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
           </div>
         )}
 
-        {/* Informações especiais */}
-        {(evaluation.isPregnant || evaluation.isInfant) && (
-          <div className="bg-blue-50 rounded-lg p-6">
-            <h4 className="font-medium text-gray-900 mb-4">Informações Especiais</h4>
-            
-            {evaluation.isPregnant && (
-              <div className="mb-4">
-                <p className="text-sm font-medium text-blue-800">
-                  👶 Gestante - {evaluation.pregnancyWeeks} semanas de IG
-                </p>
-                {/* Mostrar comorbidades gestacionais se houver */}
-              </div>
-            )}
-            
-            {evaluation.isInfant && (
-              <div>
-                <p className="text-sm font-medium text-blue-800">
-                  🍼 Criança {'<'} 1 ano - {evaluation.infantMonths} meses
-                </p>
-                {/* Mostrar considerações pediátricas se houver */}
-              </div>
-            )}
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <User className="h-5 w-5 text-yellow-500" />
+            <h4 className="text-base font-semibold text-gray-800">Resumo da Avaliação</h4>
           </div>
-        )}
+          {!hasAnyData ? (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-md">
+              <p className="text-sm font-medium">Avaliação pré-anestésica ainda não foi preenchida.</p>
+              <p className="text-sm">
+                Clique em <span className="font-semibold">Editar</span> para iniciar o preenchimento.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {/* 1. Informações Especiais */}
+              {hasSpecialInfo && (
+                <div className="mb-4">
+                  <p className="font-semibold">Informações Especiais</p>
+                  {evaluation.isPregnant && (
+                    <div className="mb-2">
+                      <p className="text-sm text-blue-800 font-semibold">
+                        👶 Gestante {evaluation.pregnancyWeeks && `- ${evaluation.pregnancyWeeks} semanas de IG`}
+                      </p>
+                      {renderCheckedList(evaluation.pregnancyComorbidities, evaluation.pregnancyOther) && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-semibold">Comorbidades gestacionais:</span>{' '}
+                          {renderCheckedList(evaluation.pregnancyComorbidities, evaluation.pregnancyOther)}
+                        </p>
+                      )}
+                      {renderCheckedList(evaluation.pregnancyConsiderations) && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-semibold">Peculiaridades:</span>{' '}
+                          {renderCheckedList(evaluation.pregnancyConsiderations)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {evaluation.isInfant && (
+                    <div className="mb-2">
+                      <p className="text-sm text-blue-800 font-semibold">
+                        🍼 Criança {'<'} 1 ano {evaluation.infantMonths && `- ${evaluation.infantMonths} meses`}
+                      </p>
+                      {renderCheckedList(evaluation.pediatricConsiderations, evaluation.pediatricOther) && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-semibold">Considerações pediátricas:</span>{' '}
+                          {renderCheckedList(evaluation.pediatricConsiderations, evaluation.pediatricOther)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
-        {/* ASA Classification */}
-        {evaluation.asaClassification && (
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h4 className="font-medium text-gray-900 mb-2">Classificação ASA</h4>
-            <p className="text-lg font-semibold text-primary-600">ASA {evaluation.asaClassification}</p>
-          </div>
-        )}
+              {/* 2. Comorbidades por Sistema */}
+              {hasAnyComorb && (
+                <div className="mb-4">
+                  <p className="font-semibold">Comorbidades por Sistema</p>
+                  <div className="ml-2">
+                    {comorbSystems.map(([label, obj, other, labelMap]) => {
+                      const val = renderCheckedList(obj, other, labelMap);
+                      return val ? (
+                        <p key={label} className="text-sm text-gray-700">
+                          <span className="font-semibold">{label}:</span> {val}
+                        </p>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
 
-        {/* Outras seções de visualização... */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <h4 className="font-medium text-gray-900 mb-4">Resumo da Avaliação</h4>
-          <p className="text-sm text-gray-600">
-            {Object.keys(evaluation).length === 0 
-              ? 'Avaliação pré-anestésica não realizada'
-              : 'Avaliação pré-anestésica completa. Clique em "Editar" para ver detalhes.'
-            }
-          </p>
+              {/* 3. Histórico Cirúrgico/Anestésico */}
+              {(evaluation.noPreviousSurgeries ||
+                (evaluation.previousSurgeries && evaluation.previousSurgeries.trim()) ||
+                evaluation.noAnestheticComplications ||
+                (evaluation.anestheticComplications && evaluation.anestheticComplications.trim())) && (
+                <div className="mb-4">
+                  <p className="font-semibold">Histórico Cirúrgico/Anestésico</p>
+                  {evaluation.noPreviousSurgeries && (
+                    <p className="text-sm text-gray-700">Sem cirurgias prévias</p>
+                  )}
+                  {evaluation.previousSurgeries && evaluation.previousSurgeries.trim() && (
+                    <p className="text-sm text-gray-700">
+                      Cirurgias prévias: {evaluation.previousSurgeries}
+                    </p>
+                  )}
+                  {evaluation.noAnestheticComplications && (
+                    <p className="text-sm text-gray-700">Sem complicações anestésicas prévias</p>
+                  )}
+                  {evaluation.anestheticComplications && evaluation.anestheticComplications.trim() && (
+                    <p className="text-sm text-gray-700">
+                      Complicações anestésicas prévias: {evaluation.anestheticComplications}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* 4. Medicamentos e Alergias */}
+              {(evaluation.currentMedications ||
+                evaluation.noAllergies ||
+                (evaluation.allergies && evaluation.allergies.trim())) && (
+                <div className="mb-4">
+                  <p className="font-semibold">Medicamentos e Alergias</p>
+                  {evaluation.currentMedications && (
+                    <p className="text-sm text-gray-700">
+                      <span className="font-semibold">Medicamentos em uso:</span> {evaluation.currentMedications}
+                    </p>
+                  )}
+                  {evaluation.noAllergies && (
+                    <p className="text-sm text-gray-700">
+                      <span className="font-semibold">Alergias:</span> Nenhuma
+                    </p>
+                  )}
+                  {evaluation.allergies && evaluation.allergies.trim() && (
+                    <p className="text-sm text-gray-700">
+                      <span className="font-semibold">Alergias:</span> {evaluation.allergies}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* 5. ASA */}
+              {evaluation.asaClassification && (
+                <div className="mb-4">
+                  <p className="font-semibold">Classificação ASA</p>
+                  <p className="text-sm text-gray-700">
+                    ASA {evaluation.asaClassification}
+                  </p>
+                </div>
+              )}
+
+              {/* 6. Via Aérea */}
+              {(evaluation.mallampati ||
+                (evaluation.airwayFindings && Object.keys(evaluation.airwayFindings).some(k => evaluation.airwayFindings[k])) ||
+                (evaluation.airwayOther && evaluation.airwayOther.trim())) && (
+                <div className="mb-4">
+                  <p className="font-semibold">Via Aérea</p>
+                  {evaluation.mallampati && (
+                    <p className="text-sm text-gray-700">Mallampati: {evaluation.mallampati}</p>
+                  )}
+                  {renderCheckedList(evaluation.airwayFindings, evaluation.airwayOther, LABELS.airwayFindings) && (
+                    <p className="text-sm text-gray-700">
+                      Achados: {renderCheckedList(evaluation.airwayFindings, evaluation.airwayOther, LABELS.airwayFindings)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* 7. Exame Físico */}
+              {evaluation.physicalExam && evaluation.physicalExam.trim() && (
+                <div className="mb-4">
+                  <p className="font-semibold">Exame Físico</p>
+                  <p className="text-sm text-gray-700">{evaluation.physicalExam}</p>
+                </div>
+              )}
+
+              {/* 8. Exames Complementares */}
+              {(hasLabResults ||
+                (evaluation.otherLabResults && evaluation.otherLabResults.trim()) ||
+                hasImaging) && (
+                <div className="mb-4">
+                  <p className="font-semibold">Exames Complementares</p>
+                  {/* Laboratório */}
+                  {hasLabResults && (
+                    <div className="ml-2">
+                      {evaluation.labResults?.hemoglobin && (
+                        <p className="text-sm text-gray-700">Hb: {evaluation.labResults.hemoglobin} g/dL</p>
+                      )}
+                      {evaluation.labResults?.hematocrit && (
+                        <p className="text-sm text-gray-700">Ht: {evaluation.labResults.hematocrit} %</p>
+                      )}
+                      {evaluation.labResults?.glucose && (
+                        <p className="text-sm text-gray-700">Glicemia: {evaluation.labResults.glucose} mg/dL</p>
+                      )}
+                      {evaluation.labResults?.urea && (
+                        <p className="text-sm text-gray-700">Ureia: {evaluation.labResults.urea} mg/dL</p>
+                      )}
+                      {evaluation.labResults?.creatinine && (
+                        <p className="text-sm text-gray-700">Creatinina: {evaluation.labResults.creatinine} mg/dL</p>
+                      )}
+                    </div>
+                  )}
+                  {evaluation.otherLabResults && evaluation.otherLabResults.trim() && (
+                    <p className="text-sm text-gray-700">
+                      Outros exames laboratoriais: {evaluation.otherLabResults}
+                    </p>
+                  )}
+                  {/* Imagem */}
+                  {hasImaging && (
+                    <div className="ml-2 mt-2">
+                      {evaluation.ecgStatus && (
+                        <p className="text-sm text-gray-700">
+                          ECG: {evaluation.ecgStatus === 'normal' ? 'Normal' : 'Alterado'}
+                          {evaluation.ecgStatus === 'abnormal' && evaluation.ecgAbnormal
+                            ? ` (${evaluation.ecgAbnormal})`
+                            : ''}
+                        </p>
+                      )}
+                      {evaluation.chestXrayStatus && (
+                        <p className="text-sm text-gray-700">
+                          RX tórax: {evaluation.chestXrayStatus === 'normal' ? 'Normal' : 'Alterado'}
+                          {evaluation.chestXrayStatus === 'abnormal' && evaluation.chestXrayAbnormal
+                            ? ` (${evaluation.chestXrayAbnormal})`
+                            : ''}
+                        </p>
+                      )}
+                      {evaluation.otherExams && evaluation.otherExams.trim() && (
+                        <p className="text-sm text-gray-700">
+                          Outros exames de imagem: {evaluation.otherExams}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 9. Técnica Anestésica */}
+              {evaluation.anestheticTechnique &&
+                Object.keys(evaluation.anestheticTechnique).some(k => evaluation.anestheticTechnique[k]) && (
+                  <div className="mb-4">
+                    <p className="font-semibold">Técnica Anestésica</p>
+                    <p className="text-sm text-gray-700">
+                      {renderCheckedList(evaluation.anestheticTechnique, null, LABELS.anestheticTechnique)}
+                    </p>
+                    {evaluation.anestheticTechnique.combined && evaluation.combinedTechnique && (
+                      <p className="text-sm text-gray-700">
+                        Técnica combinada: {evaluation.combinedTechnique}
+                      </p>
+                    )}
+                  </div>
+                )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -272,21 +597,22 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
   // Modo edição
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Editando Avaliação Pré-Anestésica</h3>
-        <div className="flex space-x-2">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Avaliação Pré-Anestésica</h3>
+        <div className="flex flex-row gap-2">
           <button
             type="button"
             onClick={markHealthyPatient}
-            className="btn-secondary text-sm"
+            className="w-full sm:w-auto px-4 py-1.5 text-sm font-medium bg-green-600 text-white rounded-full hover:bg-green-700 flex items-center justify-center"
           >
-            <Heart className="h-4 w-4 mr-1" />
+            <Heart className="h-5 w-5 sm:h-4 sm:w-4 mr-1" />
             Paciente Hígido
           </button>
           <button
+            type="button"
             onClick={handleCancel}
-            className="btn-secondary"
             disabled={isSaving}
+            className="w-full sm:w-auto px-4 py-1.5 text-sm font-medium bg-red-600 text-white rounded-full hover:bg-red-700"
           >
             Cancelar
           </button>
@@ -456,7 +782,7 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
           {/* Cardiovascular */}
           <div className="mb-6">
             <h5 className="font-medium text-red-700 mb-2">CARDIOVASCULAR</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="mr-2" {...register('cardiovascular.none')} />
                 <span className="font-medium">Sem diagnóstico de doença cardiovascular</span>
@@ -490,10 +816,47 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
             />
           </div>
 
+          {/* Neurológico */}
+          <div className="mb-6">
+            <h5 className="font-medium text-pink-700 mb-2">NEUROLÓGICO</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              <label className="flex items-center text-sm">
+                <input type="checkbox" className="mr-2" {...register('neurologic.none')} />
+                <span className="font-medium">Sem diagnóstico de doença neurológica</span>
+              </label>
+              <label className="flex items-center text-sm">
+                <input type="checkbox" className="mr-2" {...register('neurologic.stroke')} />
+                AVC
+              </label>
+              <label className="flex items-center text-sm">
+                <input type="checkbox" className="mr-2" {...register('neurologic.seizures')} />
+                Convulsão
+              </label>
+              <label className="flex items-center text-sm">
+                <input type="checkbox" className="mr-2" {...register('neurologic.epilepsy')} />
+                Epilepsia
+              </label>
+              <label className="flex items-center text-sm">
+                <input type="checkbox" className="mr-2" {...register('neurologic.aneurysm')} />
+                Aneurisma
+              </label>
+              <label className="flex items-center text-sm">
+                <input type="checkbox" className="mr-2" {...register('neurologic.cerebralPalsy')} />
+                Paralisia cerebral
+              </label>
+            </div>
+            <textarea
+              placeholder="Outras..."
+              className="input-field mt-2"
+              rows="1"
+              {...register('neurologicOther')}
+            />
+          </div>
+
           {/* Respiratório */}
           <div className="mb-6">
             <h5 className="font-medium text-blue-700 mb-2">RESPIRATÓRIO</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="mr-2" {...register('respiratory.none')} />
                 <span className="font-medium">Sem diagnóstico de doença respiratória</span>
@@ -530,7 +893,7 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
           {/* Endócrino */}
           <div className="mb-6">
             <h5 className="font-medium text-green-700 mb-2">ENDÓCRINO</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="mr-2" {...register('endocrine.none')} />
                 <span className="font-medium">Sem diagnóstico de doença endócrina</span>
@@ -567,7 +930,7 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
           {/* Digestivo */}
           <div className="mb-6">
             <h5 className="font-medium text-yellow-700 mb-2">DIGESTIVO</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="mr-2" {...register('digestive.none')} />
                 <span className="font-medium">Sem diagnóstico de doença do aparelho digestivo</span>
@@ -600,7 +963,7 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
           {/* Hematológico */}
           <div className="mb-6">
             <h5 className="font-medium text-purple-700 mb-2">HEMATOLÓGICO</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="mr-2" {...register('hematologic.none')} />
                 <span className="font-medium">Sem diagnóstico de doença hematológica</span>
@@ -633,7 +996,7 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
           {/* Ósseo/Muscular */}
           <div className="mb-6">
             <h5 className="font-medium text-orange-700 mb-2">ÓSSEO/MUSCULAR</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="mr-2" {...register('musculoskeletal.none')} />
                 <span className="font-medium">Sem diagnóstico de doença osteomuscular</span>
@@ -662,7 +1025,7 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
           {/* Geniturinário */}
           <div className="mb-6">
             <h5 className="font-medium text-indigo-700 mb-2">GENITURINÁRIO</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="mr-2" {...register('genitourinary.none')} />
                 <span className="font-medium">Sem diagnóstico de doença geniturinária</span>
@@ -692,6 +1055,33 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
             />
           </div>
         </div>
+
+
+        {/* Genética */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h5 className="font-medium text-indigo-700 mb-2">GENÉTICA</h5>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <label className="flex items-center text-sm">
+              <input type="checkbox" className="mr-2" {...register('geneticSyndromes.none')} />
+              Sem síndromes genéticas
+            </label>
+            <label className="flex items-center text-sm">
+              <input type="checkbox" className="mr-2" {...register('geneticSyndromes.downSyndrome')} />
+              Síndrome de Down
+            </label>
+            <label className="flex items-center text-sm">
+              <input type="checkbox" className="mr-2" {...register('geneticSyndromes.other')} />
+              Outras síndromes genéticas
+            </label>
+          </div>
+          <textarea
+            placeholder="Outras..."
+            className="input-field mt-2"
+            rows="1"
+            {...register('geneticSyndromeOther')}
+          />
+        </div>
+
 
         {/* 3. Histórico Cirúrgico/Anestésico */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -852,49 +1242,54 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
             {/* Laboratório */}
             <div>
               <h5 className="font-medium text-gray-700 mb-3">LABORATÓRIO</h5>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div>
-                  <label className="label text-sm">Hb (g/dL)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="input-field"
-                    {...register('labResults.hemoglobin')}
-                  />
-                </div>
-                <div>
-                  <label className="label text-sm">Ht (%)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="input-field"
-                    {...register('labResults.hematocrit')}
-                  />
-                </div>
-                <div>
-                  <label className="label text-sm">Glicemia (mg/dL)</label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    {...register('labResults.glucose')}
-                  />
-                </div>
-                <div>
-                  <label className="label text-sm">Ureia (mg/dL)</label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    {...register('labResults.urea')}
-                  />
-                </div>
-                <div>
-                  <label className="label text-sm">Creatinina (mg/dL)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="input-field"
-                    {...register('labResults.creatinine')}
-                  />
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                  <div>
+                    <label className="label text-sm">Hb (g/dL)</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]*[.,]?[0-9]*"
+                      className="input-field"
+                      onChange={(e) => setValue('labResults.hemoglobin', e.target.value.replace(',', '.'))}
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-sm">Ht (%)</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]*[.,]?[0-9]*"
+                      className="input-field"
+                      onChange={(e) => setValue('labResults.hematocrit', e.target.value.replace(',', '.'))}
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-sm">Glicemia (mg/dL)</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      {...register('labResults.glucose')}
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-sm">Ureia (mg/dL)</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      {...register('labResults.urea')}
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-sm">Creatinina (mg/dL)</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]*[.,]?[0-9]*"
+                      className="input-field"
+                      onChange={(e) => setValue('labResults.creatinine', e.target.value.replace(',', '.'))}
+                    />
+                  </div>
                 </div>
               </div>
               <textarea
@@ -1086,7 +1481,7 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
         </div>
 
         {/* Botão de submit */}
-        <div className="flex justify-end pt-6 border-t">
+        <div className="sticky bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 p-4 flex justify-end">
           <button
             type="submit"
             disabled={isSaving}
@@ -1111,3 +1506,4 @@ const PreAnestheticEvaluationSection = ({ surgery, onDataChange, autoSave }) => 
 };
 
 export default PreAnestheticEvaluationSection;
+      
