@@ -27,13 +27,10 @@ const VitalChart = ({
     return new Date(base);
   }, [surgery]);
 
-  // Converter tempo "HH:MM" em minutos desde o início
-  const minutesSinceStart = (timeString, baseDate) => {
-    if (!baseDate) return 0;
-    const [h, m] = timeString.split(':').map(Number);
-    const d = new Date(baseDate);
-    d.setHours(h, m, 0, 0);
-    return Math.round((d - baseDate) / 60000);
+  // Converter tempo absoluto em minutos desde o início
+  const minutesSinceStart = (absoluteTimestamp, baseDate) => {
+    if (!baseDate || !absoluteTimestamp) return 0;
+    return Math.round((new Date(absoluteTimestamp) - baseDate) / 60000);
   };
 
   // Preparar dados para o gráfico
@@ -41,14 +38,16 @@ const VitalChart = ({
     if (!surgeryStartDate || vitalSigns.length === 0) return [];
     
     return vitalSigns.map(v => ({
-      tMin: minutesSinceStart(v.time, surgeryStartDate),
+      tMin: minutesSinceStart(v.absoluteTimestamp, surgeryStartDate),
       pas: v.pasSistolica,
       pad: v.pasDiastolica,
       pam: v.pam,
       fc: v.fc,
       spo2: v.spo2,
       etco2: v.etco2 || null,
-      labelTime: v.time,
+      labelTime: v.absoluteTimestamp 
+        ? new Date(v.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : '--',
       rawData: v // Para tooltip detalhado
     }));
   }, [vitalSigns, surgeryStartDate]);
@@ -106,7 +105,9 @@ const VitalChart = ({
     return (
       <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg text-xs">
         <div className="font-semibold text-gray-900 mb-2">
-          {record.time} ({data.tMin >= 0 ? '+' : ''}{data.tMin} min)
+          {record.absoluteTimestamp
+            ? new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : '--'} ({data.tMin >= 0 ? '+' : ''}{data.tMin} min)
         </div>
         <div className="space-y-1">
           <div>

@@ -315,8 +315,6 @@ const VitalSignsSection = ({
       
       let record = {
         id: Date.now() + index,
-        time: absoluteTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        timestamp: absoluteTime.toISOString(),
         absoluteTimestamp: absoluteTime
       };
       
@@ -552,11 +550,7 @@ const VitalSignsSection = ({
       const absolute = getAbsoluteTimestamp(manualTime, surgeryStartDate);
       const manualRecord = {
         id: Date.now(),
-        time: absolute
-          ? absolute.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          : manualTime,
         ...baseRecord,
-        timestamp: absolute ? absolute.toISOString() : new Date().toISOString(),
         absoluteTimestamp: absolute
       };
       const normalized = {
@@ -676,13 +670,17 @@ const VitalSignsSection = ({
   const CompactCards = () => (
     <div className="space-y-1">
       {[...vitalSigns].sort((a, b) => {
-        const t1 = getAbsoluteTimestamp(a.time, surgeryStartDate);
-        const t2 = getAbsoluteTimestamp(b.time, surgeryStartDate);
+        const t1 = new Date(a.absoluteTimestamp);
+        const t2 = new Date(b.absoluteTimestamp);
         return t1 - t2;
       }).map((record) => (
         <div key={record.id} className="bg-white border rounded-lg p-3 shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-mono text-blue-600">{record.time}</span>
+            <span className="text-sm font-mono text-blue-600">
+              {record.absoluteTimestamp
+                ? new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                : '--'}
+            </span>
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                 {record.ritmo}
@@ -1378,13 +1376,17 @@ const VitalSignsSection = ({
                 </thead>
                 <tbody>
                   {[...vitalSigns].sort((a, b) => {
-                    const t1 = getAbsoluteTimestamp(a.time, surgeryStartDate);
-                    const t2 = getAbsoluteTimestamp(b.time, surgeryStartDate);
+                    const t1 = new Date(a.absoluteTimestamp);
+                    const t2 = new Date(b.absoluteTimestamp);
                     return t1 - t2;
                   }).map((record, idx) => (
                     <React.Fragment key={record.id}>
                       <tr className={`border-b border-gray-100 ${idx % 2 === 1 ? 'even:bg-gray-50' : ''}`}>
-                        <td className="px-3 py-2 font-mono text-blue-600 text-sm">{record.time}</td>
+                        <td className="px-3 py-2 font-mono text-blue-600 text-sm">
+                          {record.absoluteTimestamp
+                            ? new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                            : '--'}
+                        </td>
                         <td className="px-3 py-2 text-xs text-gray-800">{record.ritmo}</td>
                         <td className="px-3 py-2 text-xs text-gray-800 text-right">{record.fc !== undefined && record.fc !== '' ? record.fc : '--'}</td>
                         <td className="px-3 py-2 text-xs text-gray-800 text-right">{record.spo2 !== undefined && record.spo2 !== '' ? record.spo2 : '--'}</td>
