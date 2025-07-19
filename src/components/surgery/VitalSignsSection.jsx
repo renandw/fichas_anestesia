@@ -288,10 +288,10 @@ const VitalSignsSection = ({
     console.log("DEBUG - startTime recebido:", startTime);
     
     // 1. CALCULAR TEMPO JÁ DECORRIDO DA CIRURGIA
-    const timeElapsedInSurgery = vitalSigns.length > 0 
-      ? minutesSinceStart(vitalSigns[vitalSigns.length - 1].time, surgeryStartDate)
-      : 0;
-    console.log("DEBUG - timeElapsedInSurgery:", timeElapsedInSurgery);  
+    const timeElapsedInSurgery = vitalSigns.length > 0
+    ? minutesSinceStart(new Date(vitalSigns[vitalSigns.length - 1].absoluteTimestamp), surgeryStartDate)
+    : 0;
+    console.log("DEBUG - timeElapsedInSurgery:", timeElapsedInSurgery);
     
     // 2. CALCULAR INTERVALOS CONSIDERANDO O TEMPO TOTAL DA CIRURGIA
     const intervals = [];
@@ -383,16 +383,16 @@ const VitalSignsSection = ({
   ];
 
   const getNextSuggestedTime = () => {
-    const baseDate = surgeryStartDate;
-    if (!baseDate) return getSurgeryBaseTime();
-
+    if (!surgeryStartDate) return getSurgeryBaseTime();
     if (vitalSigns.length === 0) return getSurgeryBaseTime();
-
+  
     const lastRecord = vitalSigns[vitalSigns.length - 1];
-    const elapsed = minutesSinceStart(lastRecord.time, baseDate);
+    const lastTime = new Date(lastRecord.absoluteTimestamp);
+    const elapsed = minutesSinceStart(lastTime, surgeryStartDate);
     const increment = elapsed < 30 ? 5 : 10;
-
-    return addMinutesToDate(new Date(lastRecord.time), increment);
+  
+    const nextTime = addMinutesToDate(lastTime, increment);
+    return nextTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
   useEffect(() => {
@@ -703,7 +703,7 @@ const VitalSignsSection = ({
                       setEditFormData({
                         ...initialFormData,
                         id: record.id,
-                        time: record.time
+                        absoluteTimestamp: record.absoluteTimestamp
                       });
                     }
                   }}
@@ -1422,7 +1422,7 @@ const VitalSignsSection = ({
                               setEditFormData({
                                 ...initialFormData,
                                 id: record.id,
-                                time: record.time
+                                absoluteTimestamp: record.absoluteTimestamp
                               });
                             }}
                             className="text-blue-600 hover:underline text-xs flex items-center justify-center"
