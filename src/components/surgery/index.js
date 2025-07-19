@@ -8,3 +8,4 @@ export { default as FichaPreview } from './FichaPreview';
 export { default as PreAnestheticEvaluationSection } from './PreAnestheticEvaluationSection';
 export { default as PreAnestheticPrintYellow } from './PreAnestheticPrintYellow';
 export { default as VitalChart } from './VitalChart';
+

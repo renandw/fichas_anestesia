@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { 
   Calendar,
-  Clock,
-  Building2,
   User,
   Users,
   Plus,
-  Trash2,
-  X
+  Trash2
 } from 'lucide-react';
 import cbhpmCodesData from '../data/cbhpm_codes.json';
 

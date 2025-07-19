@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Pill, Plus, X, Syringe, Check, XCircle, Edit3, Trash } from 'lucide-react';
+import { Pill, Plus, Syringe, Edit3, Trash } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const MedicationsSection = ({ 
@@ -9,6 +9,7 @@ const MedicationsSection = ({
   autoSave 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [highlightedMedId, setHighlightedMedId] = useState(null);
   const [selectedMedication, setSelectedMedication] = useState('');
   const [dose, setDose] = useState('');
   const [via, setVia] = useState('');
@@ -432,6 +433,8 @@ const MedicationsSection = ({
     );
 
     onMedicationsChange(updatedMedications);
+    setHighlightedMedId(medId);
+    setTimeout(() => setHighlightedMedId(null), 2000);
     setEditDose('');
     setEditVia('');
     setEditTime('');
@@ -478,7 +481,8 @@ const MedicationsSection = ({
 
     const updatedMedications = [...medications, newMed];
     onMedicationsChange(updatedMedications);
-    
+    setHighlightedMedId(newMed.id);
+    setTimeout(() => setHighlightedMedId(null), 2000);
     setSearchTerm('');
     setSelectedMedication('');
     setDose('');
@@ -592,7 +596,10 @@ const MedicationsSection = ({
                   </thead>
                   <tbody>
                     {group.medications.map((med) => (
-                      <tr key={med.id} className="border-t border-gray-200">
+                      <tr
+                        key={med.id}
+                        className={`border-t border-gray-200 ${highlightedMedId === med.id ? 'bg-yellow-100 transition-colors duration-300' : ''}`}
+                      >
                         <td className="px-2 py-1 font-medium">{med.name}</td>
                         <td className="px-2 py-1">{med.dose}</td>
                         <td className="px-2 py-1">{med.time}</td>

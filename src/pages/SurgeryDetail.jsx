@@ -212,7 +212,7 @@ const SurgeryDetail = () => {
                 {surgery.status === 'completado' && (
                   <div className="flex items-center text-xs text-green-600">
                     <CheckCircle className="h-3 w-3 mr-1" />
-                    <span className="hidden sm:inline">Finalizada</span>
+                    <span className="sm:inline">Finalizada</span>
                   </div>
                 )}
                 {saving && (
@@ -242,7 +242,7 @@ const SurgeryDetail = () => {
                 className={`
                   flex items-center justify-center transition-all duration-200 ease-in-out
                   ${isActive 
-                    ? 'px-4 py-3 text-sm font-semibold border-b-3 border-primary-500 text-primary-700 bg-primary-100 shadow-sm rounded-t-lg' 
+                    ? 'px-4 py-3 text-sm font-bold border-b-3 border-primary-700 text-white bg-primary-600 shadow-sm rounded-t-lg' 
                     : 'px-3 py-3 text-xs md:text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-t-lg'
                   }
                 `}
@@ -288,7 +288,7 @@ const SurgeryDetail = () => {
                   <div className="font-mono text-sm font-medium">
                     {activeSurgery.id}
                   </div>
-                  <div className="text-xs text-gray-600 truncate">
+                  <div className="text-sm text-gray-600 truncate">
                     {activeSurgery.patientName || 'Sem nome'}
                   </div>
                 </button>

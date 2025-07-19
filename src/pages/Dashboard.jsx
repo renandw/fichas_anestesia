@@ -197,25 +197,25 @@ const getProcedureDisplay = (surgery) => {
 
   const quickActions = [
     {
-      name: 'Iniciar Nova Cirurgia',
+      name: 'Nova Cirurgia',
       description: 'Começar nova cirurgia em tempo real',
       href: '/new-surgery',
       icon: Plus,
-      color: 'bg-primary-600 hover:bg-primary-700'
+      color: 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900'
     },
     {
       name: 'Cirurgias em Andamento',
       description: 'Ver cirurgias ativas no momento',
       href: '/active-surgeries',
       icon: Activity,
-      color: 'bg-orange-500 hover:bg-orange-600'
+      color: 'bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900'
     },
     {
       name: 'Ver Estatísticas',
       description: 'Relatórios e análises pessoais',
       href: '/statistics',
       icon: BarChart3,
-      color: 'bg-purple-500 hover:bg-purple-600'
+      color: 'bg-gradient-to-r from-teal-600 to-teal-800 hover:from-teal-700 hover:to-teal-900'
     },
   ];
 
@@ -242,7 +242,7 @@ const getProcedureDisplay = (surgery) => {
   // Estatísticas dinâmicas
   const statsData = [
     {
-      name: 'Cirurgias este mês',
+      name: 'Neste mês',
       value: stats.totalThisMonth.toString(),
       change: '',
       changeType: 'neutral',
@@ -289,20 +289,20 @@ const getProcedureDisplay = (surgery) => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {quickActions.map((action) => {
           const Icon = action.icon;
           return (
             <Link
               key={action.name}
               to={action.href}
-              className={`${action.color} text-white p-6 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 block`}
+              className={`${action.color} text-white p-6 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 block w-full`}
             >
-              <div className="flex items-center">
-                <Icon className="h-8 w-8" />
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium">{action.name}</h3>
-                  <p className="text-sm opacity-90">{action.description}</p>
+              <div className="flex items-center gap-4">
+                <Icon className="h-8 w-8 text-white" />
+                <div className="text-left">
+                  <h3 className="text-base font-semibold leading-5">{action.name}</h3>
+                  {/*<p className="text-sm opacity-90">{action.description}</p>*/}
                 </div>
               </div>
             </Link>
@@ -312,7 +312,7 @@ const getProcedureDisplay = (surgery) => {
 
       {/* Stats */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
           {[1,2,3,4].map((i) => (
             <div key={i} className="card animate-pulse">
               <div className="h-20 bg-gray-200 rounded"></div>
@@ -320,29 +320,17 @@ const getProcedureDisplay = (surgery) => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
           {statsData.map((stat) => {
             const Icon = stat.icon;
             return (
-              <div key={stat.name} className="card">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Icon className="h-6 w-6 text-gray-400" />
+              <div key={stat.name} className="card w-full min-w-0">
+                <div className="flex flex-col items-start space-y-1 text-left">
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+                    <Icon className="h-4 w-4 text-primary-600" />
+                    <span>{stat.name}</span>
                   </div>
-                  <div className="ml-4 flex-1">
-                    <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                    <div className="flex items-baseline">
-                      <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
-                      {stat.change && (
-                        <p className={`ml-2 text-sm font-medium ${
-                          stat.changeType === 'increase' ? 'text-green-600' : 
-                          stat.changeType === 'decrease' ? 'text-red-600' : 'text-gray-500'
-                        }`}>
-                          {stat.change}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  <p className="text-xl font-semibold text-gray-900">{stat.value}</p>
                 </div>
               </div>
             );
@@ -373,68 +361,104 @@ const getProcedureDisplay = (surgery) => {
             ))}
           </div>
         ) : recentSurgeries.length > 0 ? (
-          <div className="overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Código
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Paciente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Procedimento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Início
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Duração
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {recentSurgeries.map((surgery) => (
-                  <tr 
-                    key={surgery.id} 
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => window.location.href = `/surgery/${surgery.id}`}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-primary-600 font-medium">
-                      {surgery.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {surgery.patientName || 'Nome não informado'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {surgery.proposedSurgery ||  getProcedureDisplay(surgery) || 'Procedimento não informado'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatTime(surgery.createdAt)}
-                      <div className="text-xs text-gray-400">
-                        {new Date(surgery.createdAt?.seconds ? surgery.createdAt.seconds * 1000 : surgery.createdAt).toLocaleDateString('pt-BR')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(surgery.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {getElapsedTime(surgery)}
-                      {surgery.type && (
-                        <div className="mt-1">
-                          {getTypeBadge(surgery.type)}
-                        </div>
-                      )}
-                    </td>
+          <>
+            {/* Tabela para desktop */}
+            <div className="hidden md:block overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Código
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Paciente
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Procedimento
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Início
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Duração
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {recentSurgeries.map((surgery) => (
+                    <tr 
+                      key={surgery.id} 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => window.location.href = `/surgery/${surgery.id}`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-primary-600 font-medium">
+                        {surgery.id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {surgery.patientName || 'Nome não informado'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div
+                          className="max-w-xs truncate"
+                          title={surgery.proposedSurgery || getProcedureDisplay(surgery) || 'Procedimento não informado'}
+                        >
+                          {surgery.proposedSurgery || getProcedureDisplay(surgery) || 'Procedimento não informado'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatTime(surgery.createdAt)}
+                        <div className="text-xs text-gray-400">
+                          {new Date(surgery.createdAt?.seconds ? surgery.createdAt.seconds * 1000 : surgery.createdAt).toLocaleDateString('pt-BR')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(surgery.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {getElapsedTime(surgery)}
+                        {surgery.type && (
+                          <div className="mt-1">
+                            {getTypeBadge(surgery.type)}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Cards para mobile */}
+            <div className="block md:hidden space-y-4">
+              {recentSurgeries.map((surgery) => (
+                <div
+                  key={surgery.id}
+                  className="p-4 border rounded-lg shadow-sm bg-white"
+                  onClick={() => window.location.href = `/surgery/${surgery.id}`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <div className="text-base font-semibold text-gray-900">{surgery.patientName || 'Nome não informado'}</div>
+                      <div className="text-sm font-mono text-primary-600">{surgery.id}</div>
+                    </div>
+                    <div className="text-sm text-gray-600 truncate" title={getProcedureDisplay(surgery)}>
+                      {getProcedureDisplay(surgery)}
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <div>Início: {formatTime(surgery.createdAt)}</div>
+                      <div>{getStatusBadge(surgery.status)}</div>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <div>Duração: {getElapsedTime(surgery)}</div>
+                      <div>{surgery.type && getTypeBadge(surgery.type)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="text-center py-8 text-gray-500">
             <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />

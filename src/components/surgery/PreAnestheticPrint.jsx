@@ -61,14 +61,24 @@ const PreAnestheticPrint = ({ surgery, onEditSection }) => {
   };
 
   const getHospitalName = () => {
-    try {
-      const hospital = typeof surgery?.hospital === 'string' 
-        ? JSON.parse(surgery.hospital) 
-        : surgery.hospital;
-      return hospital?.name || 'Não informado';
-    } catch {
-      return 'Não informado';
+    const rawHospital = surgery?.hospital;
+  
+    if (!rawHospital) return 'Não informado';
+  
+    if (typeof rawHospital === 'string') {
+      try {
+        const parsed = JSON.parse(rawHospital);
+        return parsed?.name || rawHospital; // se não tiver `.name`, usa o texto bruto
+      } catch {
+        return rawHospital; // se não é JSON válido, assume que é o nome direto
+      }
     }
+  
+    if (typeof rawHospital === 'object') {
+      return rawHospital?.name || 'Não informado';
+    }
+  
+    return 'Não informado';
   };
 
   const evaluation = surgery?.preAnestheticEvaluation || {};

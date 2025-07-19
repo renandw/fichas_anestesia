@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { 
   Heart,
   AlarmCheckIcon,
-  Droplets,
   Zap,
   User,
   Baby,
@@ -11,8 +10,7 @@ import {
   Save,
   Edit3,
   Check,
-  X,
-  AlarmClock
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
