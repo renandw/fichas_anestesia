@@ -199,7 +199,7 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
 
           {/* Dados específicos por tipo */}
           {surgery?.type === 'sus' && (
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">CNS</label>
                 <p className="text-sm text-gray-900">{surgery?.patientCNS || 'Não informado'}</p>
@@ -212,7 +212,7 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           )}
 
           {surgery?.type === 'convenio' && (
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">Matrícula Convênio</label>
                 <p className="text-sm text-gray-900">{surgery?.insuranceNumber || 'Não informado'}</p>

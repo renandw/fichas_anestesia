@@ -41,7 +41,7 @@ const DescriptionSection = ({ surgery, onDataChange, autoSave }) => {
       template: `Técnica anestésica: Raquianestesia.
 1.	Paciente admitido em sala cirúrgica. Realizada checagem da via aérea e funcionamento da estação de anestesia. Anamnese e exame físico realizados.
 2.	Monitorização padrão iniciada (ECG, oximetria, PNI, capnografia). Acesso venoso periférico em MSD verificado e pérvio.
-3. Raquianestesia: a) Posiciono paciente sentado em mesa cirúrgica b) Assepsia e antissepsia das mãos e dorso do paciente.; c) Agulha 27G, Quincke, punção única. Entre L3-l4. Punção de espaço subaracnóide sem intercorrências
+3. Raquianestesia: a) Posiciono paciente sentado em mesa cirúrgica b) Assepsia e antissepsia das mãos e dorso do paciente.; c) Agulha 27G, Quincke, punção única. Entre L3-L4. Punção de espaço subaracnóide sem intercorrências
 d) LCR límpido, sem alterações. e) Injeto medicações conforme seção de medicamentos.
 4- Testo bloqueio com estímulos térmicos e motores.
 5- Reviso posicionamento.
@@ -130,7 +130,7 @@ d) Sem acidentes de punção, retorno de líquor ou sangue. Teste de injeção d
       3.	Sedação consciente com medicações descritas; a. Suplementação de O₂ via cateter nasal. b. Drogas utilizadas conforme seção de medicamentos.
       4.	Paciente admitido em sala cirúrgica. Realizada checagem da via aérea e funcionamento da estação de anestesia. Anamnese e exame físico realizados.
       5.	Monitorização padrão iniciada (ECG, oximetria, PNI, capnografia). Acesso venoso periférico em MSD verificado e pérvio.
-      6.    Raquianestesia: a) Posiciono paciente sentado em mesa cirúrgica b) Assepsia e antissepsia das mãos e dorso do paciente.; c) Agulha 27G, Quincke, punção única. Entre L3-l4. Punção de espaço subaracnóide sem intercorrências
+      6.    Raquianestesia: a) Posiciono paciente sentado em mesa cirúrgica b) Assepsia e antissepsia das mãos e dorso do paciente.; c) Agulha 27G, Quincke, punção única. Entre L3-L4. Punção de espaço subaracnóide sem intercorrências
       d)    LCR límpido, sem alterações. e) Injeto medicações conforme seção de medicamentos.
       7.	Indução anestésica: a) Desnitrogenização com O₂ 100%; b) Drogas utilizadas conforme seção de medicamentos.; c) Intubação orotraqueal com TOT n° 7,5 sob laringoscopia direta (Cormack-Lehane II).; d) Tubo fixado a 21 cm na comissura labial.
 	  8.	Manutenção com drogas descritas em seção de medicações, sob ventilação mecânica. Parâmetros ventilatórios e monitoração contínua mantidos.

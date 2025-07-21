@@ -15,7 +15,7 @@ const VitalChart = ({
   vitalSigns = [], 
   surgery,
   showTitle = true,
-  height = 320,
+  height = 380,
   compact = false // Para versão de impressão
 }) => {
   // Calcular data de início da cirurgia
@@ -30,7 +30,8 @@ const VitalChart = ({
   // Converter tempo absoluto em minutos desde o início
   const minutesSinceStart = (absoluteTimestamp, baseDate) => {
     if (!baseDate || !absoluteTimestamp) return 0;
-    return Math.round((new Date(absoluteTimestamp) - baseDate) / 60000);
+    const ts = absoluteTimestamp?.toDate?.() ?? new Date(absoluteTimestamp);
+    return Math.round((ts - baseDate) / 60000);
   };
 
   // Preparar dados para o gráfico
@@ -46,31 +47,29 @@ const VitalChart = ({
       spo2: v.spo2,
       etco2: v.etco2 || null,
       labelTime: v.absoluteTimestamp 
-        ? new Date(v.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        ? (v.absoluteTimestamp?.toDate?.()?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? new Date(v.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
         : '--',
       rawData: v // Para tooltip detalhado
     }));
   }, [vitalSigns, surgeryStartDate]);
 
   // Componentes de forma customizados
-  const TriangleDown = ({ cx, cy, tooltipPosition, tooltipPayload, rawData, labelTime, tMin, ...rest }) => (
+  const TriangleDown = ({ cx, cy }) => (
     <path 
       d={`M${cx - 6},${cy - 18} L${cx + 6},${cy - 18} L${cx},${cy} Z`} 
       fill="#d63031" 
-      {...rest} 
     />
   );
   
-  const TriangleUp = ({ cx, cy, tooltipPosition, tooltipPayload, rawData, labelTime, tMin, ...rest }) => (
+  const TriangleUp = ({ cx, cy }) => (
     <path 
       d={`M${cx - 6},${cy + 18} L${cx + 6},${cy + 18} L${cx},${cy} Z`} 
       fill="#d63031" 
-      {...rest} 
     />
   );
-
-  const HeartShape = ({ cx, cy, tooltipPosition, tooltipPayload, rawData, labelTime, tMin, ...rest }) => (
-    <circle {...rest} cx={cx} cy={cy} r={5} fill="#000" />
+  
+  const HeartShape = ({ cx, cy }) => (
+    <circle cx={cx} cy={cy} r={5} fill="#000" />
   );
 
   // Calcular domínios dos eixos
@@ -105,9 +104,8 @@ const VitalChart = ({
     return (
       <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg text-xs">
         <div className="font-semibold text-gray-900 mb-2">
-          {record.absoluteTimestamp
-            ? new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-            : '--'} ({data.tMin >= 0 ? '+' : ''}{data.tMin} min)
+          {record.absoluteTimestamp?.toDate?.()?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ?? new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          {' '}({data.tMin >= 0 ? '+' : ''}{data.tMin} min)
         </div>
         <div className="space-y-1">
           <div>
@@ -177,7 +175,7 @@ const VitalChart = ({
       <div className="w-full">
         <ResponsiveContainer width="100%" height={height}>
           <ScatterChart 
-            margin={{ top: 4, right: 0, bottom: 12, left: 0 }}
+            margin={{ top: 4, right: 0, bottom: 10, left: 0 }}
           >
             <CartesianGrid stroke="#e5e5e5" strokeDasharray="3 3" />
 
@@ -191,7 +189,7 @@ const VitalChart = ({
               label={{ 
                 value: 'Horário', 
                 position: 'insideBottom', 
-                offset: compact ? -15 : -20 
+                offset: compact ? -5 : -20 
               }}
               tick={{ fontSize: compact ? 8 : 10 }}
             />
@@ -201,6 +199,7 @@ const VitalChart = ({
               domain={[0, yMax]}
               ticks={yTicks}
               tickCount={10}
+              width={25} 
               tick={{ fontSize: compact ? 8 : 10 }}
             />
 
@@ -227,8 +226,8 @@ const VitalChart = ({
               <LabelList 
                 dataKey="pam" 
                 position="bottom" 
-                fontSize={compact ? 8 : 10} 
-                offset={compact ? 50 : 60} 
+                fontSize={compact ? 5 : 10} 
+                offset={compact ? 60 : 60} 
               />
             </Scatter>
             
@@ -246,8 +245,8 @@ const VitalChart = ({
                 dataKey="spo2" 
                 position="top" 
                 formatter={(value) => `${value}%`} 
-                fontSize={compact ? 8 : 10} 
-                offset={compact ? 50 : 60} 
+                fontSize={compact ? 5 : 10} 
+                offset={compact ? 70 : 50} 
               />
             </Scatter>
 
@@ -282,7 +281,7 @@ const VitalChart = ({
           <span>FC</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="font-bold">%</span>
+          <span className="font-bold">123%</span>
           <span>SpO2</span>
         </div>
         <div className="flex items-center gap-1">

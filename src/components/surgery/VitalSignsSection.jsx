@@ -387,7 +387,8 @@ const VitalSignsSection = ({
     if (vitalSigns.length === 0) return getSurgeryBaseTime();
   
     const lastRecord = vitalSigns[vitalSigns.length - 1];
-    const lastTime = new Date(lastRecord.absoluteTimestamp);
+    // Suporte seguro a Firestore Timestamp
+    const lastTime = lastRecord.absoluteTimestamp?.toDate?.() ?? new Date(lastRecord.absoluteTimestamp);
     const elapsed = minutesSinceStart(lastTime, surgeryStartDate);
     const increment = elapsed < 30 ? 5 : 10;
   
@@ -476,7 +477,8 @@ const VitalSignsSection = ({
     if (vitalSigns.length === 0) return surgeryStartDate;
   
     const lastRecord = vitalSigns[vitalSigns.length - 1];
-    const lastTime = new Date(lastRecord.absoluteTimestamp || surgeryStartDate);
+    // Suporte seguro a Firestore Timestamp
+    const lastTime = (lastRecord.absoluteTimestamp?.toDate?.() ?? new Date(lastRecord.absoluteTimestamp || surgeryStartDate));
     const elapsed = minutesSinceStart(lastTime, surgeryStartDate);
     const increment = elapsed < 30 ? 5 : 10;
   
@@ -670,15 +672,19 @@ const VitalSignsSection = ({
   const CompactCards = () => (
     <div className="space-y-1">
       {[...vitalSigns].sort((a, b) => {
-        const t1 = new Date(a.absoluteTimestamp);
-        const t2 = new Date(b.absoluteTimestamp);
+        // Safe Firestore Timestamp: prefer toDate() if available
+        const t1 = a.absoluteTimestamp?.toDate?.() ?? new Date(a.absoluteTimestamp);
+        const t2 = b.absoluteTimestamp?.toDate?.() ?? new Date(b.absoluteTimestamp);
         return t1 - t2;
       }).map((record) => (
         <div key={record.id} className="bg-white border rounded-lg p-3 shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-mono text-blue-600">
               {record.absoluteTimestamp
-                ? new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                ? (
+                    record.absoluteTimestamp?.toDate?.()?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ??
+                    new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                  )
                 : '--'}
             </span>
             <div className="flex items-center gap-2">
@@ -707,14 +713,14 @@ const VitalSignsSection = ({
                       });
                     }
                   }}
-                  className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"
+                  className="p-1.5 bg-blue-600 text-white hover:bg-blue-100 rounded"
                   title="Editar"
                 >
                   <Edit3 className="h-3 w-3" />
                 </button>
                 <button
                   onClick={() => removeVitalSign(record.id)}
-                  className="p-1.5 text-red-600 hover:bg-red-100 rounded"
+                  className="p-1.5 bg-red-600 text-white hover:bg-red-100 rounded"
                   title="Excluir"
                 >
                   <Trash className="h-3 w-3" />
@@ -1311,46 +1317,47 @@ const VitalSignsSection = ({
           {/* Desktop: Tabela completa */}
           <div className="hidden md:block">
             {/* Conteúdo da tabela existente */}
-            <div className="overflow-auto max-w-full max-h-[70vh]">
-              <table className="min-w-max bg-white border border-gray-200 rounded-lg">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+              <table className="w-full bg-white border border-gray-200 rounded-lg">
                 <thead className="bg-gray-50">
-                  <tr className="sticky top-0 z-20 bg-gray-50">
-                    <th className="bg-white">
+                  <tr className="sticky top-0 bg-gray-50">
+                    <th className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                       <div className="text-center leading-tight font-mono">
-                        <div className="text-sm font-semibold text-gray-800">Horário</div>
+                        Horário
                       </div>
                     </th>
-                    <th className="bg-white">
+                    <th className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                       <div className="text-center leading-tight">
-                        <div className="text-sm font-semibold text-gray-800">Ritmo</div>
+                        Ritmo
                         <div className="text-xs text-gray-500"></div>
                       </div>
                     </th>
                     {/* FC */}
-                    <th className="bg-white">
+                    <th className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                       <div className="text-center leading-tight">
-                        <div className="text-sm font-semibold text-gray-800">{nomeAmigavel('fc').linha1}</div>
+                        {nomeAmigavel('fc').linha1}
                         <div className="text-xs text-gray-500">{nomeAmigavel('fc').linha2}</div>
                       </div>
                     </th>
                     {/* SpO2 */}
-                    <th className="bg-white">
+                    <th className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                       <div className="text-center leading-tight">
-                        <div className="text-sm font-semibold text-gray-800">{nomeAmigavel('spo2').linha1}</div>
+                        {nomeAmigavel('spo2').linha1}
                         <div className="text-xs text-gray-500">{nomeAmigavel('spo2').linha2}</div>
                       </div>
                     </th>
                     {/* PA sist/diast */}
-                    <th className="bg-white">
+                    <th className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                       <div className="text-center leading-tight">
-                        <div className="text-sm font-semibold text-gray-800">PA</div>
+                        PA
                         <div className="text-xs text-gray-500">mmHg</div>
                       </div>
                     </th>
                     {/* PAM */}
-                    <th className="bg-white">
+                    <th className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                       <div className="text-center leading-tight">
-                        <div className="text-sm font-semibold text-gray-800">{nomeAmigavel('pam').linha1}</div>
+                        {nomeAmigavel('pam').linha1}
                         <div className="text-xs text-gray-500">{nomeAmigavel('pam').linha2}</div>
                       </div>
                     </th>
@@ -1358,17 +1365,17 @@ const VitalSignsSection = ({
                     {activeDynamicColumns.map(param => {
                       const { linha1, linha2 } = nomeAmigavel(param);
                       return (
-                        <th key={param} className="bg-white">
+                        <th key={param} className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                           <div className="text-center leading-tight">
-                            <div className="text-sm font-semibold text-gray-800">{linha1}</div>
+                            {linha1}
                             <div className="text-xs text-gray-500">{linha2}</div>
                           </div>
                         </th>
                       );
                     })}
-                    <th className="bg-white">
+                    <th className="text-sm font-semibold text-gray-700 px-4 py-4 bg-gray-50">
                       <div className="text-center leading-tight">
-                        <div className="text-sm font-semibold text-gray-800">Ações</div>
+                        Ações
                         <div className="text-xs text-gray-500"></div>
                       </div>
                     </th>
@@ -1376,30 +1383,34 @@ const VitalSignsSection = ({
                 </thead>
                 <tbody>
                   {[...vitalSigns].sort((a, b) => {
-                    const t1 = new Date(a.absoluteTimestamp);
-                    const t2 = new Date(b.absoluteTimestamp);
+                    // Safe Firestore Timestamp
+                    const t1 = a.absoluteTimestamp?.toDate?.() ?? new Date(a.absoluteTimestamp);
+                    const t2 = b.absoluteTimestamp?.toDate?.() ?? new Date(b.absoluteTimestamp);
                     return t1 - t2;
                   }).map((record, idx) => (
                     <React.Fragment key={record.id}>
-                      <tr className={`border-b border-gray-100 ${idx % 2 === 1 ? 'even:bg-gray-50' : ''}`}>
-                        <td className="px-3 py-2 font-mono text-blue-600 text-sm">
+                      <tr className={`border-b border-gray-100 ${idx % 2 === 1 ? 'even:bg-gray-25' : ''}`}>
+                        <td className="px-4 py-3 text-base font-mono text-gray-900">
                           {record.absoluteTimestamp
-                            ? new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                            ? (
+                                record.absoluteTimestamp?.toDate?.()?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) ??
+                                new Date(record.absoluteTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                              )
                             : '--'}
                         </td>
-                        <td className="px-3 py-2 text-xs text-gray-800">{record.ritmo}</td>
-                        <td className="px-3 py-2 text-xs text-gray-800 text-right">{record.fc !== undefined && record.fc !== '' ? record.fc : '--'}</td>
-                        <td className="px-3 py-2 text-xs text-gray-800 text-right">{record.spo2 !== undefined && record.spo2 !== '' ? record.spo2 : '--'}</td>
-                        <td className="px-3 py-2 text-xs text-gray-800">
+                        <td className="px-4 py-3 text-sm text-gray-900">{record.ritmo}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">{record.fc !== undefined && record.fc !== '' ? record.fc : '--'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">{record.spo2 !== undefined && record.spo2 !== '' ? record.spo2 : '--'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
                           {record.pasSistolica !== undefined && record.pasSistolica !== '' && record.pasDiastolica !== undefined && record.pasDiastolica !== ''
                             ? `${record.pasSistolica}/${record.pasDiastolica}`
                             : '--'}
                         </td>
-                        <td className="px-3 py-2 text-xs text-gray-800 text-right">{record.pam !== undefined && record.pam !== '' ? record.pam : '--'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">{record.pam !== undefined && record.pam !== '' ? record.pam : '--'}</td>
                         {activeDynamicColumns.map(param => (
                           <td
                             key={param}
-                            className={`px-3 py-2 text-xs text-gray-800${
+                            className={`px-4 py-3 ${['pupillas'].includes(param) ? 'text-xs' : 'text-sm'} text-gray-900${
                               // Alinhar à direita se campo numérico
                               ['fc', 'pasSistolica', 'pasDiastolica', 'pam', 'spo2', 'etco2', 'temperatura', 'bis', 'tof', 'glicemia', 'lactato', 'fio2', 'peep', 'volumeCorrente', 'pvc', 'debitoCardiaco', 'diurese', 'sangramento'].includes(param)
                                 ? ' text-right'
@@ -1409,153 +1420,335 @@ const VitalSignsSection = ({
                             {record[param] !== undefined && record[param] !== '' ? record[param] : '--'}
                           </td>
                         ))}
-                        <td className="px-3 py-2 flex gap-2">
+                        <td className="px-4 py-3 flex gap-3">
                           <button
                             onClick={() => {
                               setEditingRecord(record.id);
                               // Preenche todos os campos editáveis mesmo que ausentes
                               const fixedFields = ['ritmo', 'fc', 'pasSistolica', 'pasDiastolica', 'pam', 'spo2'];
                               const allFields = [...fixedFields, ...activeDynamicColumns];
-                          const initialFormData = Object.fromEntries(
-                            allFields.map(field => [field, record.hasOwnProperty(field) ? record[field] : ''])
-                          );
+                              const initialFormData = Object.fromEntries(
+                                allFields.map(field => [field, record.hasOwnProperty(field) ? record[field] : ''])
+                              );
                               setEditFormData({
                                 ...initialFormData,
                                 id: record.id,
                                 absoluteTimestamp: record.absoluteTimestamp
                               });
                             }}
-                            className="text-blue-600 hover:underline text-xs flex items-center justify-center"
+                            className="p-3 text-blue-600 hover:bg-blue-50 rounded flex items-center justify-center"
                             title="Editar"
                           >
-                            <Edit3 size={14} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => removeVitalSign(record.id)}
-                            className="text-red-600 hover:underline text-xs flex items-center justify-center"
+                            className="p-3 text-red-600 hover:bg-red-50 rounded flex items-center justify-center"
                             title="Excluir"
                           >
-                            <Trash size={14} />
+                            <Trash size={16} />
                           </button>
                         </td>
                       </tr>
                       {editingRecord === record.id && (
                         <tr className="bg-blue-50">
                           <td colSpan={7 + activeDynamicColumns.length} className="p-4">
-                            <div className="space-y-2">
-                              {/* Campos fixos */}
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700">Ritmo:</label>
-                                  <input
-                                    type="text"
-                                    value={editFormData.ritmo || ''}
-                                    onChange={(e) => handleEditChange('ritmo', e.target.value)}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700">FC (bpm):</label>
-                                  <input
-                                    type="number"
-                                    value={editFormData.fc || ''}
-                                    onChange={(e) => handleEditChange('fc', e.target.value)}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700">SpO2 (%):</label>
-                                  <input
-                                    type="number"
-                                    value={editFormData.spo2 || ''}
-                                    onChange={(e) => handleEditChange('spo2', e.target.value)}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700">PA Sistólica:</label>
-                                  <input
-                                    type="number"
-                                    value={editFormData.pasSistolica || ''}
-                                    onChange={(e) => handleEditChange('pasSistolica', e.target.value)}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700">PA Diastólica:</label>
-                                  <input
-                                    type="number"
-                                    value={editFormData.pasDiastolica || ''}
-                                    onChange={(e) => handleEditChange('pasDiastolica', e.target.value)}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700">PAM:</label>
-                                  <input
-                                    type="number"
-                                    value={editFormData.pam || ''}
-                                    onChange={(e) => handleEditChange('pam', e.target.value)}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                </div>
-                              </div>
-                              {/* Campos dinâmicos: mostrar se existentes em algum registro ou neste record */}
-                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                                {[
-                                  // Lista dos campos extras
-                                  'etco2', 'temperatura', 'bis', 'pupillas', 'tof',
-                                  'glicemia', 'lactato', 'fio2', 'peep', 'volumeCorrente',
-                                  'pvc', 'debitoCardiaco', 'diurese', 'sangramento'
-                                ].map(param => (
-                                  <div key={param}>
-                                    <label className="block text-xs font-medium text-gray-700">
-                                      {(() => {
-                                        // Nome amigável para o campo
-                                        switch (param) {
-                                          case 'etco2': return 'EtCO2 (mmHg)';
-                                          case 'temperatura': return 'Temperatura (°C)';
-                                          case 'bis': return 'BIS (0-100)';
-                                          case 'pupillas': return 'Pupilas';
-                                          case 'tof': return 'TOF (0-4)';
-                                          case 'glicemia': return 'Glicemia (mg/dL)';
-                                          case 'lactato': return 'Lactato (mmol/L)';
-                                          case 'fio2': return 'FiO2 (%)';
-                                          case 'peep': return 'PEEP (cmH2O)';
-                                          case 'volumeCorrente': return 'Vol. Corrente (mL)';
-                                          case 'pvc': return 'PVC (mmHg)';
-                                          case 'debitoCardiaco': return 'Débito Cardíaco (L/min)';
-                                          case 'diurese': return 'Diurese (mL)';
-                                          case 'sangramento': return 'Sangramento (mL)';
-                                          default: return param;
-                                        }
-                                      })()}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Cardiovascular */}
+                              <section className="bg-red-50 p-4 rounded-md border border-red-200">
+                                <h5 className="text-sm font-medium text-red-800 mb-3">🩺 Cardiovascular</h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      Ritmo Cardíaco *
+                                    </label>
+                                    <select
+                                      value={editFormData.ritmo || ''}
+                                      onChange={e => handleEditChange('ritmo', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                    >
+                                      {ritmosCardiacos.map(ritmo => (
+                                        <option key={ritmo} value={ritmo}>{ritmo}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      Frequência Cardíaca (bpm) *
                                     </label>
                                     <input
-                                      type={param === 'pupillas' ? 'text' : 'number'}
-                                      value={editFormData[param] || ''}
-                                      onChange={(e) => handleEditChange(param, e.target.value)}
-                                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                      type="number"
+                                      value={editFormData.fc || ''}
+                                      onChange={e => handleEditChange('fc', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                     />
                                   </div>
-                                ))}
-                              </div>
-                              <div className="flex justify-end gap-2 pt-2">
-                                <button
-                                  onClick={handleCancelEdit}
-                                  className="text-xs text-gray-500 hover:underline"
-                                >
-                                  Cancelar
-                                </button>
-                                <button
-                                  onClick={() => handleSaveEdit(record.id)}
-                                  className="text-xs text-blue-600 font-medium hover:underline"
-                                >
-                                  Salvar
-                                </button>
-                              </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      PA Sistólica (mmHg) *
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={editFormData.pasSistolica || ''}
+                                      onChange={e => handleEditChange('pasSistolica', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      PA Diastólica (mmHg) *
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={editFormData.pasDiastolica || ''}
+                                      onChange={e => handleEditChange('pasDiastolica', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      PAM (mmHg)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={editFormData.pam || ''}
+                                      onChange={e => handleEditChange('pam', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </section>
+                              {/* Respiratório */}
+                              <section className="bg-blue-50 p-4 rounded-md border border-blue-200">
+                                <h5 className="text-sm font-medium text-blue-800 mb-3">🫁 Respiratório</h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      SpO₂ (%) *
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={editFormData.spo2 || ''}
+                                      onChange={e => handleEditChange('spo2', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      EtCO₂ (mmHg)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={editFormData.etco2 || ''}
+                                      onChange={e => handleEditChange('etco2', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </section>
+                              {/* Outros Parâmetros */}
+                              <section className="md:col-span-2 bg-gray-50 p-4 rounded-md border border-gray-200">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Neurológicos */}
+                                  <div>
+                                    <h6 className="text-xs font-medium text-gray-600 mb-2">Neurológicos</h6>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          BIS (0-100)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.bis || ''}
+                                          onChange={e => handleEditChange('bis', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Pupilas
+                                        </label>
+                                        <select
+                                          value={editFormData.pupillas || ''}
+                                          onChange={e => handleEditChange('pupillas', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                        >
+                                          {pupillasOpcoes.map(opcao => (
+                                            <option key={opcao} value={opcao}>{opcao}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          TOF (0-4)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.tof || ''}
+                                          onChange={e => handleEditChange('tof', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {/* Metabólicos */}
+                                  <div>
+                                    <h6 className="text-xs font-medium text-gray-600 mb-2">Metabólicos</h6>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Glicemia (mg/dL)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.glicemia || ''}
+                                          onChange={e => handleEditChange('glicemia', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Lactato (mmol/L)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          step="0.1"
+                                          value={editFormData.lactato || ''}
+                                          onChange={e => handleEditChange('lactato', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                {/* Respiratório Avançado, Hemodinâmicos, Outros */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                  {/* Respiratório Avançado */}
+                                  <div>
+                                    <h6 className="text-xs font-medium text-gray-600 mb-2">Respiratório Avançado</h6>
+                                    <div className="space-y-2">
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          FiO₂ (%)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.fio2 || ''}
+                                          onChange={e => handleEditChange('fio2', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          PEEP (cmH₂O)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.peep || ''}
+                                          onChange={e => handleEditChange('peep', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Vol. Corrente (mL)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.volumeCorrente || ''}
+                                          onChange={e => handleEditChange('volumeCorrente', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {/* Hemodinâmicos */}
+                                  <div>
+                                    <h6 className="text-xs font-medium text-gray-600 mb-2">Hemodinâmicos</h6>
+                                    <div className="space-y-2">
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          PVC (mmHg)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.pvc || ''}
+                                          onChange={e => handleEditChange('pvc', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Débito Cardíaco (L/min)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          step="0.1"
+                                          value={editFormData.debitoCardiaco || ''}
+                                          onChange={e => handleEditChange('debitoCardiaco', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {/* Outros */}
+                                  <div>
+                                    <h6 className="text-xs font-medium text-gray-600 mb-2">Outros</h6>
+                                    <div className="space-y-2">
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Temperatura (°C)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          step="0.1"
+                                          value={editFormData.temperatura || ''}
+                                          onChange={e => handleEditChange('temperatura', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Diurese (mL)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.diurese || ''}
+                                          onChange={e => handleEditChange('diurese', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Sangramento (mL)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={editFormData.sangramento || ''}
+                                          onChange={e => handleEditChange('sangramento', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </section>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4">
+                              <button
+                                onClick={handleCancelEdit}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={() => handleSaveEdit(record.id)}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                              >
+                                Salvar
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1563,13 +1756,15 @@ const VitalSignsSection = ({
                     </React.Fragment>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           </div>
 
           {/* Mobile: Cards compactos */}
           <div className="md:hidden">
             <CompactCards />
+            
           </div>
         </>
       ) : (

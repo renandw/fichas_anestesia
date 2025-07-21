@@ -21,6 +21,28 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
   const [showYellowPreAnesthetic, setShowYellowPreAnesthetic] = useState(false);
   const [fichaHeight, setFichaHeight] = useState(528); // altura padrão estimada
 
+  const getAbsoluteTimestamp = (timeStr, baseDate) => {
+    // Se timeStr já for Date, retorna ela
+    if (timeStr instanceof Date) return timeStr;
+    // Se timeStr for string no formato HH:mm, calcula o Date
+    if (!baseDate || !timeStr) return null;
+    // Suporta timeStr vindo como "HH:mm" ou Date ou já string de data
+    if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const result = new Date(baseDate);
+      result.setHours(hours, minutes, 0, 0);
+      // Se o horário calculado for menor que a base (passou da meia-noite), soma 1 dia
+      if (result < baseDate) result.setDate(result.getDate() + 1);
+      return result;
+    }
+    // Se timeStr for string de data ISO
+    if (typeof timeStr === 'string') {
+      const d = new Date(timeStr);
+      if (!isNaN(d)) return d;
+    }
+    return null;
+  };
+
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
     documentTitle: `Ficha_Anestesica_${surgery.id}`,
@@ -41,18 +63,40 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
     return d.toLocaleDateString('pt-BR');
   };
 
+  // Nova função: idade detalhada para <2 anos
   const calculateAge = () => {
     if (!surgery?.patientBirthDate) return 'N/A';
     
     const birth = new Date(surgery.patientBirthDate);
     const now = new Date();
-    const years = now.getFullYear() - birth.getFullYear();
-    const months = now.getMonth() - birth.getMonth();
     
-    if (months < 0 || (months === 0 && now.getDate() < birth.getDate())) {
-      return years - 1;
+    let years = now.getFullYear() - birth.getFullYear();
+    let months = now.getMonth() - birth.getMonth();
+    let days = now.getDate() - birth.getDate();
+
+    if (days < 0) {
+      months--;
+      const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      days += lastMonth.getDate();
     }
-    return years;
+
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    let ageText = '';
+    if (years > 0) {
+      ageText += `${years} ano${years !== 1 ? 's' : ''}`;
+      if (months > 0) ageText += `, ${months} mês${months !== 1 ? 'es' : ''}`;
+    } else if (months > 0) {
+      ageText += `${months} mês${months !== 1 ? 'es' : ''}`;
+      if (days > 0) ageText += `, ${days} dia${days !== 1 ? 's' : ''}`;
+    } else {
+      ageText = `${days} dia${days !== 1 ? 's' : ''}`;
+    }
+
+    return ageText;
   };
 
   const getHospitalName = () => {
@@ -111,35 +155,43 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
   const getStartEndTimes = () => {
     const baseTime = surgery?.startTime || surgery?.createdAt;
     if (!baseTime) return { start: 'N/A', end: 'N/A' };
-
-    let startDate;
+  
+    // Calcular data base da cirurgia
+    let surgeryStartDate;
     if (baseTime.seconds) {
-      startDate = new Date(baseTime.seconds * 1000);
-    } else if (typeof baseTime === 'string') {
-      startDate = new Date(baseTime);
+      surgeryStartDate = new Date(baseTime.seconds * 1000);
     } else {
-      startDate = new Date(baseTime);
+      surgeryStartDate = new Date(baseTime);
     }
-
-    const start = startDate.toLocaleTimeString('pt-BR', { 
+  
+    const start = surgeryStartDate.toLocaleTimeString('pt-BR', { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
-
-    // Para o fim, usar o último registro de sinais vitais ou medicação
+  
+    // Coletar todos os timestamps como Date objects
+    const allTimestamps = [
+      // Medicações: converter "HH:mm" para Date usando a mesma função
+      ...(surgery.medications || []).map(m => 
+        getAbsoluteTimestamp(m.time, surgeryStartDate)
+      ),
+      // Sinais vitais: já são Date objects (mas podem ser Firestore Timestamps)
+      ...(surgery.vitalSigns || []).map(v => 
+        v.absoluteTimestamp?.toDate?.() ?? new Date(v.absoluteTimestamp)
+      )
+    ].filter(Boolean);
+  
     let endTime = start;
     
-    const allTimes = [
-      ...(surgery.medications || []).map(m => m.time),
-      ...(surgery.vitalSigns || []).map(v => v.time)
-    ].filter(Boolean);
-
-    if (allTimes.length > 0) {
-      // Pegar o último horário registrado
-      const sortedTimes = allTimes.sort();
-      endTime = sortedTimes[sortedTimes.length - 1];
+    if (allTimestamps.length > 0) {
+      // Encontrar o timestamp mais recente
+      const lastTimestamp = new Date(Math.max(...allTimestamps.map(t => t.getTime())));
+      endTime = lastTimestamp.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
     }
-
+  
     return { start, end: endTime };
   };
 
@@ -395,7 +447,7 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
       >
         <div 
           ref={componentRef}
-          className="bg-white px-4 py-2 print-page mx-auto origin-top scale-[0.47] sm:scale-100 print:scale-100 print:overflow-visible print:shadow-none print:border-0 print:p-8"
+          className="bg-white px-[2.5cm] py-[1.5cm] print-page mx-auto origin-top scale-[0.47] sm:scale-100 print:scale-100 print:overflow-visible print:shadow-none print:border-0 print:p-8"
           style={{
             width: '794px',
             minWidth: '794px',
@@ -410,36 +462,30 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
             border: 'none'
           }}
         >
-          {/* CABEÇALHO */}
-          <div className="border-b border-gray-800 pb-1 mb-2">
+          {/* CABEÇALHO NOVO */}
+          <div className="border-b border-gray-800 pb-1 mb-2 space-y-1">
+            {/* Primeira linha: título e ID */}
             <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 mb-0">FICHA ANESTÉSICA</h1>
-                <div className="flex items-center space-x-6">
-                  <p className="text-xs text-gray-600 mb-0">Registro do procedimento anestésico</p>
-                  <div className="flex space-x-4 text-xs text-gray-600">
-                    <div><strong>HOSPITAL:</strong> {getHospitalName()}</div>
-                    <div><strong>ANESTESIOLOGISTA:</strong> {surgery.createdByName || 'N/A'}</div>
-                  </div>
-                </div>
+              <h1 className="text-xl font-bold text-gray-900">FICHA ANESTÉSICA</h1>
+              <div className="bg-blue-100 px-2 py-1 rounded text-sm text-blue-800 font-bold">
+                {surgery.id}
               </div>
-              <div className="text-right">
-                <div className="bg-blue-100 px-2 py-1 rounded text-sm">
-                  <span className="font-bold text-blue-800">{surgery.id}</span>
-                </div>
-              </div>
+            </div>
+
+            {/* Segunda linha: hospital à esquerda, anestesista à direita */}
+            <div className="flex justify-between text-xs text-gray-600">
+              <div><strong>HOSPITAL:</strong> {getHospitalName()}</div>
+              <div><strong>ANESTESIOLOGISTA:</strong> {surgery.createdByName || 'N/A'}</div>
             </div>
           </div>
 
           {/* INFORMAÇÕES BÁSICAS */}
-          <div className="space-y-1 mb-2 text-xs">
-            <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-1 mb-3 text-xs">
+            <div className="grid grid-cols-4 gap-3">
               <div><strong>DATA:</strong> {formatDate(surgery.surgeryDate)}</div>
               <div><strong>PACIENTE:</strong> {surgery.patientName || 'N/A'}</div>
-              <div><strong>IDADE:</strong> {calculateAge()} anos</div>
+              <div><strong>IDADE:</strong> {calculateAge()}</div>
               <div><strong>SEXO:</strong> {surgery.patientSex || 'N/A'}</div>
-            </div>
-            <div className="grid grid-cols-4 gap-4">
               <div><strong>PESO:</strong> {surgery.patientWeight ? `${surgery.patientWeight}kg` : 'N/A'}</div>
               <div>
                 {surgery.type === 'sus'
@@ -458,7 +504,7 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
           {/* MEDICAÇÕES */}
           {sortedMedications.length > 0 && (
             <div className="mb-2">
-              <h2 className="text-sm font-bold text-gray-900 mb-2 border-b border-gray-400 pb-1">
+              <h2 className="bg-gray-200 px-2 py-1 font-bold text-[10px] text-gray-700 rounded-t border-l-4 border-blue-500">
                 MEDICAÇÕES E FLUIDOS
               </h2>
               
@@ -493,7 +539,7 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
                 });
 
                 return (
-                  <div className="text-xs leading-tight">
+                  <div className="p-2 border border-gray-200 border-t-0 rounded-b bg-white">
                     {(() => {
                       const sections = [
                         ...(regularMedsByRoute['VR']
@@ -528,10 +574,10 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
           {/* SINAIS VITAIS */}
           {sortedVitalSigns.length > 0 && (
             <div className="mb-2">
-              <h2 className="text-sm font-bold text-gray-900 mb-2 border-b border-gray-400 pb-1">
+              <h2 className="bg-gray-200 px-2 py-1 font-bold text-[10px] text-gray-700 rounded-t border-l-4 border-blue-500">
                 SINAIS VITAIS
               </h2>
-              <div className="mb-1 -mx-2">
+              <div className="p-2 border border-gray-200 border-t-0 rounded-b bg-white">
                 <VitalChart 
                   vitalSigns={sortedVitalSigns} 
                   surgery={surgery}
@@ -545,10 +591,10 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
 
           {/* DESCRIÇÃO */}
           <div className="mb-2">
-            <h2 className="text-sm font-bold text-gray-900 mb-2 border-b border-gray-400 pb-1">
+            <h2 className="bg-gray-200 px-2 py-1 font-bold text-[10px] text-gray-700 rounded-t border-l-4 border-blue-500">
               DESCRIÇÃO ANESTÉSICA
             </h2>
-            <div className="min-h-16 p-2 border border-gray-300 rounded bg-gray-50 text-xs">
+            <div className="p-2 border border-gray-200 border-t-0 rounded-b bg-white">
               {surgery.description ? (
                 <div className="whitespace-pre-wrap">{surgery.description}</div>
               ) : (
@@ -558,41 +604,44 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
           </div>
 
           {/* RODAPÉ */}
-          <div className="border-t border-gray-400 pt-2 space-y-2 text-xs">
-            <div><strong>PROCEDIMENTO:</strong> {getProceduresList()}</div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {surgery.type === 'convenio' && surgery.cbhpmProcedures?.length > 0 && (
-                <>
-                  <div>
-                    <strong>CÓDIGOS CBHPM:</strong> {surgery.cbhpmProcedures.filter(p => p.codigo).map(p => p.codigo).join(', ')}
-                  </div>
-                  <div>
-                    <strong>PORTES:</strong> {surgery.cbhpmProcedures.filter(p => p.porte_anestesico).map(p => p.porte_anestesico).join(', ')}
-                  </div>
-                </>
-              )}
-              <div>
-                <strong>CIRURGIÃO:</strong> {surgery.mainSurgeon || 'N/A'}
+          <div className="mb-1">
+          <h2 className="bg-gray-200 px-2 py-1 font-bold text-[10px] text-gray-700 rounded-t border-l-4 border-blue-500">
+              EQUIPE CIRÚRGICA E PROCEDIMENTO
+            </h2>
+            <div className="p-2 border border-gray-200 text-[10px] border-t-0 rounded-b bg-white">
+              <div className="grid grid-cols-2 gap-3">
+                {surgery.type === 'convenio' && surgery.cbhpmProcedures?.length > 0 && (
+                  <>
+                    <div><strong>PROCEDIMENTO:</strong> {getProceduresList()}</div>
+                    <div>
+                      <strong>CÓDIGOS CBHPM:</strong> {surgery.cbhpmProcedures.filter(p => p.codigo).map(p => p.codigo).join(', ')}
+                    </div>
+                    <div>
+                      <strong>CIRURGIÃO:</strong> {surgery.mainSurgeon || 'N/A'}
+                    </div>
+                    {surgery.auxiliarySurgeons?.some(aux => aux.name) && (
+                      <div>
+                        <strong>AUXILIARES:</strong> {surgery.auxiliarySurgeons.filter(aux => aux.name).map(aux => aux.name).join(', ')}
+                      </div>
+                    )}
+                    <div>
+                      <strong>POSIÇÃO:</strong> {surgery.patientPosition || 'N/A'}
+                    </div>
+                    <div>
+                      <strong>PORTES:</strong> {surgery.cbhpmProcedures.filter(p => p.porte_anestesico).map(p => p.porte_anestesico).join(', ')}
+                    </div>
+                  </>
+                )}
               </div>
-              <div>
-                <strong>POSIÇÃO:</strong> {surgery.patientPosition || 'N/A'}
-              </div>
-            </div>
-
-            {surgery.auxiliarySurgeons?.some(aux => aux.name) && (
-              <div>
-                <strong>AUXILIARES:</strong> {surgery.auxiliarySurgeons.filter(aux => aux.name).map(aux => aux.name).join(', ')}
-              </div>
-            )}
+            </div>  
           </div>
 
           {/* FOOTER */}
-          <div className="mt-2 pt-2 border-t border-gray-400 text-center text-xs text-gray-600">
+          <div className="mt-2 pt-2 border-t border-gray-400 text-center text-[7px] text-gray-600">
             <div>
               {surgery.status === 'completado' && surgery.completedAt ? (
                 <>
-                  Ficha finalizada em {new Date(surgery.completedAt).toLocaleString('pt-BR')} | 
+                  Ficha finalizada em {new Date({endTime}).toLocaleString('pt-BR')} | 
                   <strong> Responsável:</strong> {surgery.completedByName || surgery.createdByName || 'N/A'}
                 </>
               ) : (
