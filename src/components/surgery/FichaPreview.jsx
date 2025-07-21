@@ -641,7 +641,7 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
             <div>
               {surgery.status === 'completado' && surgery.completedAt ? (
                 <>
-                  Ficha finalizada em {new Date({endTime}).toLocaleString('pt-BR')} | 
+                  Ficha finalizada em {new Date(surgery.completedAt).toLocaleString('pt-BR')} | 
                   <strong> Responsável:</strong> {surgery.completedByName || surgery.createdByName || 'N/A'}
                 </>
               ) : (

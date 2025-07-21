@@ -13,6 +13,7 @@ const MedicationsSection = ({
   const [selectedMedication, setSelectedMedication] = useState('');
   const [dose, setDose] = useState('');
   const [via, setVia] = useState('');
+  const [time, setTime] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeEditPopover, setActiveEditPopover] = useState(null);
   const [editDose, setEditDose] = useState('');
@@ -21,7 +22,110 @@ const MedicationsSection = ({
   const editButtonRefs = useRef({});
   const addButtonRef = useRef(null);
   const presetButtonRef = useRef(null);
-  const [editPopoverPosition, setEditPopoverPosition] = useState({ top: 0, left: 0 });
+  const [editPopoverPosition, setEditPopoverPosition] = useState({ top: 0, left: 0, placement: 'bottom' });
+
+  // Função para calcular posição responsiva do popover
+  const calculateResponsivePosition = (buttonElement, popoverWidth = 280, popoverHeight = 200) => {
+    if (!buttonElement) return { top: 100, left: 20, placement: 'bottom' };
+
+    const rect = buttonElement.getBoundingClientRect();
+    const viewport = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY
+    };
+
+    const spaceBelow = viewport.height - rect.bottom - 20;
+    const spaceAbove = rect.top - 20;
+    const spaceRight = viewport.width - rect.right - 20;
+    const spaceLeft = rect.left - 20;
+
+    let position = {
+      top: rect.bottom + viewport.scrollY + 8,
+      left: rect.left + viewport.scrollX,
+      placement: 'bottom'
+    };
+
+    if (spaceBelow < popoverHeight && spaceAbove >= popoverHeight) {
+      position = {
+        top: rect.top + viewport.scrollY - popoverHeight - 8,
+        left: rect.left + viewport.scrollX,
+        placement: 'top'
+      };
+    } else if (spaceBelow < popoverHeight && spaceAbove < popoverHeight) {
+      if (spaceRight >= popoverWidth) {
+        position = {
+          top: rect.top + viewport.scrollY,
+          left: rect.right + viewport.scrollX + 8,
+          placement: 'right'
+        };
+      } else if (spaceLeft >= popoverWidth) {
+        position = {
+          top: rect.top + viewport.scrollY,
+          left: rect.left + viewport.scrollX - popoverWidth - 8,
+          placement: 'left'
+        };
+      }
+    }
+
+    if (position.placement === 'bottom' || position.placement === 'top') {
+      const rightOverflow = (position.left + popoverWidth) - (viewport.width + viewport.scrollX);
+      if (rightOverflow > 0) {
+        position.left = Math.max(10, position.left - rightOverflow - 10);
+      }
+      if (position.left < (viewport.scrollX + 10)) {
+        position.left = viewport.scrollX + 10;
+      }
+    }
+
+    if (position.placement === 'right' || position.placement === 'left') {
+      const bottomOverflow = (position.top + popoverHeight) - (viewport.height + viewport.scrollY);
+      if (bottomOverflow > 0) {
+        position.top = Math.max(viewport.scrollY + 10, position.top - bottomOverflow - 10);
+      }
+      if (position.top < (viewport.scrollY + 10)) {
+        position.top = viewport.scrollY + 10;
+      }
+    }
+
+    return position;
+  };
+
+  // Componente PopoverArrow
+  const PopoverArrow = ({ placement }) => {
+    const arrowClasses = {
+      bottom: "absolute -top-2 left-8 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-white",
+      top: "absolute -bottom-2 left-8 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-white",
+      right: "absolute -left-2 top-4 w-0 h-0 border-t-8 border-b-8 border-r-8 border-transparent border-r-white",
+      left: "absolute -right-2 top-4 w-0 h-0 border-t-8 border-b-8 border-l-8 border-transparent border-l-white"
+    };
+    return <div className={arrowClasses[placement] || arrowClasses.bottom} />;
+  };
+
+  // Funções para abrir popovers responsivos
+  const openEditPopover = (medId) => {
+    const buttonElement = editButtonRefs.current[medId];
+    const position = calculateResponsivePosition(buttonElement, 280, 200);
+    setEditPopoverPosition(position);
+    const med = medications.find(m => m.id === medId);
+    setEditDose(med?.dose || '');
+    setEditTime(med?.time || '');
+    setEditVia(med?.via || '');
+    setActiveEditPopover(medId);
+  };
+
+  const openAddPopover = () => {
+    const position = calculateResponsivePosition(addButtonRef.current, 320, 300);
+    setEditPopoverPosition(position);
+    setActiveEditPopover('add');
+  };
+
+  const openPresetPopover = () => {
+    const position = calculateResponsivePosition(presetButtonRef.current, 400, 400);
+    setEditPopoverPosition(position);
+    setActiveEditPopover('preset');
+  };
 
   const getSurgeryBaseTime = () => {
     if (!surgery?.createdAt) {
@@ -475,7 +579,7 @@ const MedicationsSection = ({
       dose: dose.trim(),
       via: via.trim(),
       category: medicationData?.category || 'Personalizada',
-      time: getSurgeryBaseTime(),
+      time: time || getSurgeryBaseTime(),
       timestamp: new Date().toISOString()
     };
 
@@ -487,6 +591,7 @@ const MedicationsSection = ({
     setSelectedMedication('');
     setDose('');
     setVia('');
+    setTime('');
     setShowSuggestions(false);
     
     if (autoSave) {
@@ -542,16 +647,7 @@ const MedicationsSection = ({
           <div className="flex flex-wrap gap-2">
             <button
               ref={addButtonRef}
-              onClick={() => {
-                if (addButtonRef.current) {
-                  const rect = addButtonRef.current.getBoundingClientRect();
-                  setEditPopoverPosition({
-                    top: rect.bottom + window.scrollY + 4,
-                    left: Math.min(rect.left + window.scrollX, window.innerWidth - 340),
-                  });
-                }
-                setActiveEditPopover('add');
-              }}
+              onClick={openAddPopover}
               className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors w-fit"
             >
               <Plus className="w-4 h-4" />
@@ -559,16 +655,7 @@ const MedicationsSection = ({
             </button>
             <button
               ref={presetButtonRef}
-              onClick={() => {
-                if (presetButtonRef.current) {
-                  const rect = presetButtonRef.current.getBoundingClientRect();
-                  setEditPopoverPosition({
-                    top: rect.bottom + window.scrollY + 4,
-                    left: Math.min(rect.left + window.scrollX, window.innerWidth - 420),
-                  });
-                }
-                setActiveEditPopover('preset');
-              }}
+              onClick={openPresetPopover}
               className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors w-fit"
             >
               <Syringe className="w-4 h-4" />
@@ -612,17 +699,7 @@ const MedicationsSection = ({
                           <div className="relative flex gap-1 items-center">
                             <button
                               ref={(el) => (editButtonRefs.current[med.id] = el)}
-                              onClick={() => {
-                                const rect = editButtonRefs.current[med.id].getBoundingClientRect();
-                                setEditPopoverPosition({
-                                  top: rect.bottom + window.scrollY + 4,
-                                  left: Math.min(rect.left + window.scrollX, window.innerWidth - 280),
-                                });
-                                setEditDose(med.dose);
-                                setEditTime(med.time || '');
-                                setEditVia(med.via || '');
-                                setActiveEditPopover(activeEditPopover === med.id ? null : med.id);
-                              }}
+                              onClick={() => openEditPopover(med.id)}
                               className="p-1 bg-gray-500 text-white rounded hover:bg-gray-200"
                             >
                               <Edit3 className="w-4 h-4" />
@@ -659,7 +736,7 @@ const MedicationsSection = ({
         className="fixed z-50 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3"
         style={{ top: editPopoverPosition.top, left: editPopoverPosition.left }}
       >
-        <div className="absolute -top-2 left-8 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-white" />
+        <PopoverArrow placement={editPopoverPosition.placement} />
         <label className="block text-xs text-gray-700 mb-1">Dose</label>
         <input
           type="text"
@@ -701,7 +778,7 @@ const MedicationsSection = ({
           left: editPopoverPosition.left || 20
         }}
       >
-        <div className="absolute -top-2 left-10 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-white" />
+        <PopoverArrow placement={editPopoverPosition.placement} />
         <label className="block text-xs text-gray-700 mb-1">Medicação</label>
         <input
           type="text"
@@ -736,6 +813,14 @@ const MedicationsSection = ({
           value={dose}
           onChange={(e) => setDose(e.target.value)}
           placeholder="Ex: 2mg, 1g"
+          className="w-full px-2 py-1 border rounded text-xs mb-2"
+        />
+
+        <label className="block text-xs text-gray-700 mb-1">Hora</label>
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
           className="w-full px-2 py-1 border rounded text-xs mb-2"
         />
 
@@ -780,7 +865,7 @@ const MedicationsSection = ({
           left: editPopoverPosition.left || 40
         }}
       >
-        <div className="absolute -top-2 left-6 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-white" />
+        <PopoverArrow placement={editPopoverPosition.placement} />
         <h4 className="text-sm font-semibold mb-2">Escolha um Preset</h4>
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {medicationPresets.map((preset, idx) => (
