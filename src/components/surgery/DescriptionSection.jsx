@@ -170,10 +170,12 @@ d) Sem acidentes de punção, retorno de líquor ou sangue. Teste de injeção d
       }    
   };
 
-  // Atualizar estado local quando surgery muda
+  // Atualizar estado local quando surgery muda, exceto se estiver editando
   useEffect(() => {
-    setDescription(surgery?.description || '');
-  }, [surgery?.description]);
+    if (!isEditing) {
+      setDescription(surgery?.description || '');
+    }
+  }, [surgery?.description, isEditing]);
 
   // AutoSave com debounce
   const handleAutoSave = async (newDescription) => {
@@ -203,7 +205,7 @@ d) Sem acidentes de punção, retorno de líquor ou sangue. Teste de injeção d
       } finally {
         setIsSaving(false);
       }
-    }, 1000); // Debounce de 1 segundo
+    }, 3000); // Debounce de 3 segundos
 
     setSaveTimeout(timeout);
   };

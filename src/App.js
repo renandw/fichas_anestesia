@@ -16,6 +16,7 @@ import FormsList from './pages/FormsList';
 import Statistics from './pages/Statistics';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
+import Surgeries from './pages/Surgeries';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -48,6 +49,7 @@ function App() {
               <Route path="forms" element={<FormsList />} />
               <Route path="statistics" element={<Statistics />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="surgeries" element={<Surgeries />} />
             </Route>
             
             {/* 404 */}

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useFloating, offset, flip, shift } from '@floating-ui/react';
 import { Pill, Plus, Syringe, Edit3, Trash } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -22,75 +23,6 @@ const MedicationsSection = ({
   const editButtonRefs = useRef({});
   const addButtonRef = useRef(null);
   const presetButtonRef = useRef(null);
-  const [editPopoverPosition, setEditPopoverPosition] = useState({ top: 0, left: 0, placement: 'bottom' });
-
-  // Função para calcular posição responsiva do popover
-  const calculateResponsivePosition = (buttonElement, popoverWidth = 280, popoverHeight = 200) => {
-    if (!buttonElement) return { top: 100, left: 20, placement: 'bottom' };
-
-    const rect = buttonElement.getBoundingClientRect();
-    const viewport = {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      scrollX: window.scrollX,
-      scrollY: window.scrollY
-    };
-
-    const spaceBelow = viewport.height - rect.bottom - 20;
-    const spaceAbove = rect.top - 20;
-    const spaceRight = viewport.width - rect.right - 20;
-    const spaceLeft = rect.left - 20;
-
-    let position = {
-      top: rect.bottom + viewport.scrollY + 8,
-      left: rect.left + viewport.scrollX,
-      placement: 'bottom'
-    };
-
-    if (spaceBelow < popoverHeight && spaceAbove >= popoverHeight) {
-      position = {
-        top: rect.top + viewport.scrollY - popoverHeight - 8,
-        left: rect.left + viewport.scrollX,
-        placement: 'top'
-      };
-    } else if (spaceBelow < popoverHeight && spaceAbove < popoverHeight) {
-      if (spaceRight >= popoverWidth) {
-        position = {
-          top: rect.top + viewport.scrollY,
-          left: rect.right + viewport.scrollX + 8,
-          placement: 'right'
-        };
-      } else if (spaceLeft >= popoverWidth) {
-        position = {
-          top: rect.top + viewport.scrollY,
-          left: rect.left + viewport.scrollX - popoverWidth - 8,
-          placement: 'left'
-        };
-      }
-    }
-
-    if (position.placement === 'bottom' || position.placement === 'top') {
-      const rightOverflow = (position.left + popoverWidth) - (viewport.width + viewport.scrollX);
-      if (rightOverflow > 0) {
-        position.left = Math.max(10, position.left - rightOverflow - 10);
-      }
-      if (position.left < (viewport.scrollX + 10)) {
-        position.left = viewport.scrollX + 10;
-      }
-    }
-
-    if (position.placement === 'right' || position.placement === 'left') {
-      const bottomOverflow = (position.top + popoverHeight) - (viewport.height + viewport.scrollY);
-      if (bottomOverflow > 0) {
-        position.top = Math.max(viewport.scrollY + 10, position.top - bottomOverflow - 10);
-      }
-      if (position.top < (viewport.scrollY + 10)) {
-        position.top = viewport.scrollY + 10;
-      }
-    }
-
-    return position;
-  };
 
   // Componente PopoverArrow
   const PopoverArrow = ({ placement }) => {
@@ -103,11 +35,8 @@ const MedicationsSection = ({
     return <div className={arrowClasses[placement] || arrowClasses.bottom} />;
   };
 
-  // Funções para abrir popovers responsivos
+  // Funções para abrir popovers
   const openEditPopover = (medId) => {
-    const buttonElement = editButtonRefs.current[medId];
-    const position = calculateResponsivePosition(buttonElement, 280, 200);
-    setEditPopoverPosition(position);
     const med = medications.find(m => m.id === medId);
     setEditDose(med?.dose || '');
     setEditTime(med?.time || '');
@@ -116,35 +45,92 @@ const MedicationsSection = ({
   };
 
   const openAddPopover = () => {
-    const position = calculateResponsivePosition(addButtonRef.current, 320, 300);
-    setEditPopoverPosition(position);
     setActiveEditPopover('add');
   };
 
   const openPresetPopover = () => {
-    const position = calculateResponsivePosition(presetButtonRef.current, 400, 400);
-    setEditPopoverPosition(position);
     setActiveEditPopover('preset');
   };
+  // Floating UI para popover de edição
+  const {
+    x,
+    y,
+    refs,
+    strategy,
+    placement
+  } = useFloating({
+    placement: 'bottom',
+    middleware: [offset(8), flip(), shift({ padding: 10 })],
+  });
 
   const getSurgeryBaseTime = () => {
-    if (!surgery?.createdAt) {
-      return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    }
-    
-    let surgeryDate;
-    if (surgery.createdAt.seconds) {
-      // Firestore Timestamp
-      surgeryDate = new Date(surgery.createdAt.seconds * 1000);
-    } else if (typeof surgery.createdAt === 'string') {
-      // ISO String
-      surgeryDate = new Date(surgery.createdAt);
+    let baseDate;
+
+    if (surgery?.startTime) {
+      if (surgery.startTime.seconds) {
+        baseDate = new Date(surgery.startTime.seconds * 1000);
+      } else {
+        baseDate = new Date(surgery.startTime);
+      }
+      // Adicionar 5 minutos
+      baseDate.setMinutes(baseDate.getMinutes() + 5);
+    } else if (surgery?.createdAt) {
+      if (surgery.createdAt.seconds) {
+        baseDate = new Date(surgery.createdAt.seconds * 1000);
+      } else {
+        baseDate = new Date(surgery.createdAt);
+      }
     } else {
-      // Já é um objeto Date
-      surgeryDate = new Date(surgery.createdAt);
+      baseDate = new Date();
     }
-    
-    return surgeryDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    return baseDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Adicionar após as outras constantes, antes dos medicationPresets
+  const weightBasedDoses = {
+    'Propofol': (weight) => `${Math.round(200, weight * 3)}mg`,
+    'Fentanil': (weight) => `${Math.round(250, weight * 2)}mcg`,
+    'Rocurônio': (weight) => `${Math.round(50, weight * 0.5)}mg`,
+    'Morfina': (weight) => `${Math.round(6, weight * 0.1)}mcg`,
+    'Cetamina': (weight) => `${Math.round(10, weight * 2)}mg`,
+    'Midazolam': (weight) => `${Math.round(5, weight * 0.15)}mg`,
+    'Succinilcolina': (weight) => `${Math.round(1000, weight * 1.0)}mg`,
+    'Dipirona': (weight) => `${Math.round(2000, weight * 40)}mg`,         // 15–25 mg/kg IV
+    'Cetoprofeno': (weight) => `${Math.round(weight * 1)}mg`,        // 1 mg/kg IV, máx 100 mg
+    'Dimenidrinato': (_) => `30mg`,                                  // Dose fixa usual IV
+    'Metoclopramida': (weight) => `${Math.round(weight * 0.15)}mg`,  // 0.1–0.2 mg/kg IV
+    'Ondansetrona': (weight) => `${Math.round(8, weight * 0.1)}mg`,     // 0.1 mg/kg, máx 8 mg
+    'Dexametasona': (weight) => `${Math.round(10, weight * 0.1)}mg`,     // 0.1–0.2 mg/kg
+    'Dexmedetomidina': (weight) => `${(200, weight * 1).toFixed(0)}mcg`,  // 1 mcg/kg (dose de ataque)
+    'Diazepam': (weight) => `${Math.round(weight * 0.1)}mg`,         // 0.1–0.2 mg/kg IV
+    'Haloperidol': (_) => `2.5mg`,                                   // Dose fixa comum IV/IM
+    'Cisatracúrio': (weight) => `${Math.round(10, weight * 0.15)}mg`,    // 0.15–0.2 mg/kg
+    'Paracetamol': (weight) => `${Math.round(750, weight * 15)}mg`,       // 10–15 mg/kg, máx 1g
+    'Atracúrio': (weight) => `${Math.round(50, weight * 0.5)}mg`,        // 0.4–0.5 mg/kg
+    'Adrenalina': (weight) => `${(weight * 0.01).toFixed(2)}mg`,     // 0.01 mg/kg em anafilaxia
+    'Tramadol': (weight) => `${Math.round(100, weight * 1.5)}mg`,         // 1–2 mg/kg IV/IM
+    'Tenoxicam': (_) => `20mg`,                                      // Dose única IV
+    'Escopolamina': (_) => `0.5mg`,                                  // Dose fixa IV/IM
+    'Bromoprida': (weight) => `${Math.min(3000, weight * 0.5)}mg`,                                      // Dose padrão IV
+    'Cefazolina': (weight) => `${Math.min(3000, weight * 30)}mg`,    // 20–30 mg/kg, máx 2g
+    'Cefalotina': (weight) => `${Math.min(3000, weight * 50)}mg`,    // 30–50 mg/kg, máx 2g
+    'Cefuroxima': (weight) => `${Math.min(1500, weight * 30)}mg`,    // 20–30 mg/kg, máx 1.5g
+    'Ceftriaxona': (weight) => `${Math.min(2000, weight * 50)}mg`,   // 50–100 mg/kg, máx 2g
+    'Clindamicina': (weight) => `${Math.min(900, weight * 10)}mg`,   // 10–15 mg/kg, máx 900mg
+    'Metronidazol': (weight) => `${Math.min(500, weight * 30)}mg`,   // 7.5–15 mg/kg, máx 500mg
+    'Gentamicina': (weight) => `${Math.round(weight * 5)}mg`,        // 4–7 mg/kg (dose única)
+    'Ciprofloxacino': (weight) => `${Math.round(400, weight * 6)}mg`,                               // Dose comum IV
+    'Ampicilina': (weight) => `${Math.round(weight * 50)}mg`,        // 50 mg/kg, máx 2g
+    'Fenitoína': (weight) => `${Math.round(weight * 15)}mg`,         // 15–20 mg/kg EV lento
+    'Clonidina': (weight) => `${Math.round(weight * 2)}mcg`,         // 1–2 mcg/kg
+    'Naloxona': (weight) => `${Math.round(weight * 0.01)}mg`,        // 0.01 mg/kg, repetir se necessário
+    'Flumazenil': (weight) => `${(weight * 0.01).toFixed(2)}mg`,      // 0.01 mg/kg, máx 1mg
+    'Prometazina': (weight) => `${Math.min(weight * 0.5)}mg`,                                     // Dose comum IM/IV
+    'Sulfato de Magnésio': (weight) => `${Math.round(weight * 30)}mg`, // 25–50 mg/kg (crise convulsiva)
+    'Hidrocortisona': (weight) => `${Math.round(weight * 2)}mg`,     // 1–2 mg/kg IV
+    'Atropina': (weight) => `${(weight * 0.01).toFixed(2)}mg`, 
+
   };
 
   // Vias de administração disponíveis
@@ -173,6 +159,28 @@ const MedicationsSection = ({
     'Antibiótico': 'bg-indigo-100 text-indigo-800',
     'Vasopressor': 'bg-orange-100 text-orange-800',
     // fallback colour
+  };
+
+  // Para PRESETS
+  const calculateDoseForPreset = (medicationName, originalDose) => {
+    const patientWeight = surgery?.patientWeight;
+    
+    if (!patientWeight || patientWeight > 40 || !weightBasedDoses[medicationName]) {
+      return originalDose;
+    }
+    
+    return weightBasedDoses[medicationName](patientWeight);
+  };
+
+  // Para medicação INDIVIDUAL
+  const calculateDoseForIndividual = (medicationName) => {
+    const patientWeight = surgery?.patientWeight;
+    
+    if (!patientWeight || patientWeight > 40 || !weightBasedDoses[medicationName]) {
+      return '';
+    }
+    
+    return weightBasedDoses[medicationName](patientWeight);
   };
 
   const getCategoryColor = (category) =>
@@ -500,7 +508,7 @@ const MedicationsSection = ({
     const newMedications = preset.medications.map((med, index) => ({
       id: Date.now() + index,
       name: med.name,
-      dose: med.dose,
+      dose: calculateDoseForPreset(med.name, med.dose),
       via: med.via,
       category: med.category,
       time: getSurgeryBaseTime(),
@@ -606,6 +614,10 @@ const MedicationsSection = ({
     setSelectedMedication(medication.name);
     setSearchTerm(medication.name);
     setVia(getSuggestedVia(medication.name)); // Auto-sugerir via
+    
+    const calculatedDose = calculateDoseForIndividual(medication.name);
+    setDose(calculatedDose);
+
     setShowSuggestions(false);
   };
 
@@ -641,9 +653,14 @@ const MedicationsSection = ({
       {/* Medicações aplicadas */}
       <div>
         <div className="flex flex-col gap-2 mb-3">
-          <h3 className="text-lg font-medium text-gray-900">
-            Medicações Aplicadas ({medications.length})
-          </h3>
+        <h3 className="text-lg font-medium text-gray-900">
+          Medicações Aplicadas ({medications.length})
+          {surgery?.patientWeight && (
+            <span className="text-sm text-gray-600 ml-2">
+              - Paciente: {surgery.patientWeight}kg
+            </span>
+          )}
+        </h3>
           <div className="flex flex-wrap gap-2">
             <button
               ref={addButtonRef}
@@ -698,7 +715,12 @@ const MedicationsSection = ({
                         <td className="px-2 py-1">
                           <div className="relative flex gap-1 items-center">
                             <button
-                              ref={(el) => (editButtonRefs.current[med.id] = el)}
+                              ref={(el) => {
+                                editButtonRefs.current[med.id] = el;
+                                if (activeEditPopover === med.id) {
+                                  refs.setReference(el);
+                                }
+                              }}
                               onClick={() => openEditPopover(med.id)}
                               className="p-1 bg-gray-500 text-white rounded hover:bg-gray-200"
                             >
@@ -733,10 +755,15 @@ const MedicationsSection = ({
     {/* Edit Popover - Rendered at the end of component */}
     {activeEditPopover && activeEditPopover !== 'add' && activeEditPopover !== 'preset' && (
       <div
+        ref={refs.setFloating}
         className="fixed z-50 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3"
-        style={{ top: editPopoverPosition.top, left: editPopoverPosition.left }}
+        style={{
+          position: strategy,
+          top: y ?? 0,
+          left: x ?? 0
+        }}
       >
-        <PopoverArrow placement={editPopoverPosition.placement} />
+        <PopoverArrow placement={placement} />
         <label className="block text-xs text-gray-700 mb-1">Dose</label>
         <input
           type="text"
@@ -774,11 +801,11 @@ const MedicationsSection = ({
       <div
         className="fixed z-50 w-[320px] bg-white border border-gray-200 rounded-md shadow-lg p-4"
         style={{
-          top: editPopoverPosition.top || 100,
-          left: editPopoverPosition.left || 20
+          top: addButtonRef.current ? addButtonRef.current.getBoundingClientRect().bottom + 8 : 100,
+          left: addButtonRef.current ? addButtonRef.current.getBoundingClientRect().left : 20
         }}
       >
-        <PopoverArrow placement={editPopoverPosition.placement} />
+        <PopoverArrow placement="bottom" />
         <label className="block text-xs text-gray-700 mb-1">Medicação</label>
         <input
           type="text"
@@ -861,11 +888,11 @@ const MedicationsSection = ({
       <div
         className="fixed z-50 w-[400px] bg-white border border-gray-200 rounded-md shadow-lg p-4"
         style={{
-          top: editPopoverPosition.top || 120,
-          left: editPopoverPosition.left || 40
+          top: 120,
+          left: 40
         }}
       >
-        <PopoverArrow placement={editPopoverPosition.placement} />
+        <PopoverArrow placement="bottom" />
         <h4 className="text-sm font-semibold mb-2">Escolha um Preset</h4>
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {medicationPresets.map((preset, idx) => (
@@ -875,11 +902,12 @@ const MedicationsSection = ({
                 <div className="flex flex-col">
                   <span className="font-medium text-gray-800 text-xs">{preset.name}</span>
                   <div className="text-[10px] text-gray-500 space-y-0.5 mt-1">
-                    {preset.medications.map((m, i) => (
-                      <div key={i}>
-                        {m.name} {m.dose} <span className="text-gray-400">({m.via})</span>
-                      </div>
-                    ))}
+                  {preset.medications.map((m, i) => (
+                    <div key={i}>
+                      {m.name} {calculateDoseForPreset(m.name, m.dose)} 
+                      <span className="text-gray-400">({m.via})</span>
+                    </div>
+                  ))}
                   </div>
                 </div>
               </div>

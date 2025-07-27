@@ -420,15 +420,15 @@ const PatientFormFields = ({
                         Código e Procedimento {index === 0 ? '*' : ''}
                       </label>
                       <input
-  type="text"
-  className="input-field"
-  placeholder="Digite código ou nome do procedimento..."
-  list={`cbhpm-options-${index}`}
-  {...register(`cbhpmProcedures.${index}.codigo`, {
-    required: index === 0 ? 'Pelo menos um procedimento é obrigatório' : false,
-    onBlur: (e) => handleCbhpmChange(index, e.target.value) // Detecta quando sai do campo
-  })}
-/>
+                        type="text"
+                        className="input-field"
+                        placeholder="Digite código ou nome do procedimento..."
+                        list={`cbhpm-options-${index}`}
+                        {...register(`cbhpmProcedures.${index}.codigo`, {
+                          required: index === 0 ? 'Pelo menos um procedimento é obrigatório' : false,
+                          onBlur: (e) => handleCbhpmChange(index, e.target.value) // Detecta quando sai do campo
+                        })}
+                      />
                       <datalist id={`cbhpm-options-${index}`}>
                         {cbhpmCodes.map((item) => (
                           <option key={item.codigo} value={`${item.codigo} - ${item.procedimento}`} />
@@ -504,8 +504,12 @@ const PatientFormFields = ({
               type="text"
               className="input-field"
               placeholder="Nome completo do paciente"
+              style={{ textTransform: 'capitalize' }}
               {...register('patientName', {
-                required: 'Nome é obrigatório'
+                required: 'Nome é obrigatório',
+                onChange: (e) => {
+                  e.target.value = e.target.value.replace(/\b\w/g, c => c.toUpperCase());
+                }
               })}
             />
             {errors.patientName && (
@@ -681,8 +685,12 @@ const PatientFormFields = ({
             type="text"
             className="input-field"
             placeholder="Dr. João Silva"
+            style={{ textTransform: 'capitalize' }}
             {...register('mainSurgeon', {
-              required: 'Cirurgião principal é obrigatório'
+              required: 'Cirurgião principal é obrigatório',
+              onChange: (e) => {
+                e.target.value = e.target.value.replace(/\b\w/g, c => c.toUpperCase());
+              }
             })}
           />
           {errors.mainSurgeon && (

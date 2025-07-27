@@ -224,6 +224,7 @@ import {
       const q = query(
         surgeriesRef,
         where('createdBy', '==', userId),
+        orderBy('createdAt', 'desc'),
         limit(limit_count)
       );
       
@@ -302,5 +303,21 @@ import {
     } catch (error) {
       console.error('Erro ao finalizar cirurgia:', error);
       throw error;
+    }
+  };
+
+  export const getUserSurgeriesCount = async (userId) => {
+    try {
+      const surgeriesRef = collection(db, 'surgeries');
+      const q = query(
+        surgeriesRef,
+        where('createdBy', '==', userId)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.size; // Retorna o número total
+    } catch (error) {
+      console.error('Erro ao contar cirurgias do usuário:', error);
+      return 0;
     }
   };

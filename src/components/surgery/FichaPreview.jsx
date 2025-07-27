@@ -610,26 +610,20 @@ const FichaPreview = ({ surgery, onEditSection, autoSave, userProfile }) => {
             </h2>
             <div className="p-2 border border-gray-200 text-[10px] border-t-0 rounded-b bg-white">
               <div className="grid grid-cols-2 gap-3">
+                {surgery.mainSurgeon && (
+                  <div><strong>CIRURGIÃO:</strong> {surgery.mainSurgeon}</div>
+                )}
+                {surgery.auxiliarySurgeons?.some(aux => aux.name) && (
+                  <div><strong>AUXILIARES:</strong> {surgery.auxiliarySurgeons.filter(aux => aux.name).map(aux => aux.name).join(', ')}</div>
+                )}
+                {surgery.patientPosition && (
+                  <div><strong>POSIÇÃO:</strong> {surgery.patientPosition}</div>
+                )}
                 {surgery.type === 'convenio' && surgery.cbhpmProcedures?.length > 0 && (
                   <>
                     <div><strong>PROCEDIMENTO:</strong> {getProceduresList()}</div>
-                    <div>
-                      <strong>CÓDIGOS CBHPM:</strong> {surgery.cbhpmProcedures.filter(p => p.codigo).map(p => p.codigo).join(', ')}
-                    </div>
-                    <div>
-                      <strong>CIRURGIÃO:</strong> {surgery.mainSurgeon || 'N/A'}
-                    </div>
-                    {surgery.auxiliarySurgeons?.some(aux => aux.name) && (
-                      <div>
-                        <strong>AUXILIARES:</strong> {surgery.auxiliarySurgeons.filter(aux => aux.name).map(aux => aux.name).join(', ')}
-                      </div>
-                    )}
-                    <div>
-                      <strong>POSIÇÃO:</strong> {surgery.patientPosition || 'N/A'}
-                    </div>
-                    <div>
-                      <strong>PORTES:</strong> {surgery.cbhpmProcedures.filter(p => p.porte_anestesico).map(p => p.porte_anestesico).join(', ')}
-                    </div>
+                    <div><strong>CÓDIGOS CBHPM:</strong> {surgery.cbhpmProcedures.filter(p => p.codigo).map(p => p.codigo).join(', ')}</div>
+                    <div><strong>PORTES:</strong> {surgery.cbhpmProcedures.filter(p => p.porte_anestesico).map(p => p.porte_anestesico).join(', ')}</div>
                   </>
                 )}
               </div>

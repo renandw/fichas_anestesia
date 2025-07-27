@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getUserSurgeries, getActiveSurgeries } from '../services/firestore';
+import { getUserSurgeries, getActiveSurgeries, getUserSurgeriesCount } from '../services/firestore';
 import { 
   Plus, 
   FileText, 
@@ -21,6 +21,7 @@ const Dashboard = () => {
   
   const [recentSurgeries, setRecentSurgeries] = useState([]);
   const [activeSurgeries, setActiveSurgeries] = useState([]);
+  const [totalSurgeries, setTotalSurgeries] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalThisMonth: 0,
@@ -71,9 +72,10 @@ const getProcedureDisplay = (surgery) => {
         console.log('🔍 Carregando dashboard para usuário:', userProfile.uid);
         
         // Carregar cirurgias recentes e ativas em paralelo
-        const [recent, active] = await Promise.all([
+        const [recent, active, total] = await Promise.all([
           getUserSurgeries(userProfile.uid, 10),
-          getActiveSurgeries(userProfile.uid)
+          getActiveSurgeries(userProfile.uid),
+          getUserSurgeriesCount(userProfile.uid) // ← Nova chamada
         ]);
         
         console.log('📋 Cirurgias recentes encontradas:', recent);
@@ -81,6 +83,7 @@ const getProcedureDisplay = (surgery) => {
         
         setRecentSurgeries(recent);
         setActiveSurgeries(active);
+        setTotalSurgeries(total);
         
         // Calcular estatísticas
         calculateStats(recent, active);
@@ -232,11 +235,14 @@ const getProcedureDisplay = (surgery) => {
     return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Desconhecido</span>;
   };
 
-  const getTypeBadge = (type) => {
+  const getTypeBadge = (type, insuranceName) => {
     if (type === 'sus') {
       return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">SUS</span>;
     }
-    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">Convênio</span>;
+    
+    // Para convênio, mostrar o nome específico do convênio
+    const displayName = insuranceName || 'Convênio';
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">{displayName}</span>;
   };
 
   // Estatísticas dinâmicas
@@ -342,7 +348,7 @@ const getProcedureDisplay = (surgery) => {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">
-            Cirurgias Recentes ({recentSurgeries.length})
+            Cirurgias Recentes ({recentSurgeries.length}/{totalSurgeries})
           </h2>
           <Link
             to="/surgeries"
@@ -421,7 +427,7 @@ const getProcedureDisplay = (surgery) => {
                         {getElapsedTime(surgery)}
                         {surgery.type && (
                           <div className="mt-1">
-                            {getTypeBadge(surgery.type)}
+                            {getTypeBadge(surgery.type, surgery.insuranceName)}
                           </div>
                         )}
                       </td>
@@ -452,7 +458,7 @@ const getProcedureDisplay = (surgery) => {
                     </div>
                     <div className="flex justify-between text-sm text-gray-500">
                       <div>Duração: {getElapsedTime(surgery)}</div>
-                      <div>{surgery.type && getTypeBadge(surgery.type)}</div>
+                      <div>{surgery.type && getTypeBadge(surgery.type, surgery.insuranceName)}</div>
                     </div>
                   </div>
                 </div>
