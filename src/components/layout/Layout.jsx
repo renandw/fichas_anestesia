@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Menu, 
+  User,
   X, 
   Home, 
   FileText, 
@@ -20,8 +21,9 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Nova Ficha', href: '/new-form', icon: Plus },
-    { name: 'Fichas', href: '/forms', icon: FileText },
+    { name: 'Pacientes', href: '/patients', icon: User },
+    { name: 'Nova Ficha Anestésica', href: '/newanesthesia', icon: Plus },
+    { name: 'Nova Avaliação Pré-Anestésica', href: '/forms', icon: FileText },
     { name: 'Estatísticas', href: '/statistics', icon: BarChart3 },
     { name: 'Configurações', href: '/settings', icon: Settings },
   ];
@@ -31,7 +33,9 @@ const Layout = () => {
   };
 
   // Verificar se está na página de cirurgia
-  const isSurgeryPage = location.pathname.startsWith('/surgery/');
+  const isSurgeryPage = location.pathname.startsWith('/new-patient-procedure');
+  const isProcedurePage = location.pathname.startsWith('/patients');
+  const isPatientPage = location.pathname.startsWith('/new-patient');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -102,31 +106,31 @@ const Layout = () => {
               );
             })}
           </nav>
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 w-64">
             <div className="flex items-center mb-3">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
                     {userProfile?.name?.charAt(0) || 'U'}
                   </span>
                 </div>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-900 truncate">
+                    {userProfile?.name || 'Usuário'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    CRM: {userProfile?.crm}
+                  </p>
+                </div>
               </div>
-              <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {userProfile?.name || 'Usuário'}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  CRM: {userProfile?.crm}
-                </p>
-              </div>
+              <button
+                onClick={logout}
+                className="flex items-center px-3 py-2 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </button>
             </div>
-            <button
-              onClick={logout}
-              className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <LogOut className="h-4 w-4 mr-3" />
-              Sair
-            </button>
           </div>
         </div>
       </div>
@@ -134,7 +138,7 @@ const Layout = () => {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar for mobile - ESCONDIDA na página de cirurgia */}
-        {!isSurgeryPage && (
+        {(!isSurgeryPage && !isProcedurePage && !isPatientPage) && (
           <div className="lg:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
             <button
               onClick={() => setSidebarOpen(true)}

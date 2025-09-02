@@ -9,10 +9,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
+const IdentificationSection = ({ surgery, patient, procedure, onDataChange, autoSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
 
   const handleDataChange = (data) => {
     if (onDataChange) {
@@ -54,16 +53,16 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
 
   // Exibir valor do hospital baseado no tipo
   const getHospitalDisplay = () => {
-    const rawHospital = surgery?.hospital;
+    const rawHospital = procedure?.hospital;
   
     if (!rawHospital) return 'Não informado';
   
     if (typeof rawHospital === 'string') {
       try {
         const parsed = JSON.parse(rawHospital);
-        return parsed?.name || rawHospital; // se não tiver `.name`, usa o texto bruto
+        return parsed?.name || rawHospital;
       } catch {
-        return rawHospital; // se não é JSON válido, assume que é o nome direto
+        return rawHospital;
       }
     }
   
@@ -76,9 +75,9 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
 
   // Exibir idade calculada
   const getCalculatedAge = () => {
-    if (!surgery?.patientBirthDate) return 'Não informado';
+    if (!patient?.birthDate) return 'Não informado';
     
-    const birth = new Date(surgery.patientBirthDate);
+    const birth = new Date(patient.birthDate);
     const now = new Date();
     
     let years = now.getFullYear() - birth.getFullYear();
@@ -110,49 +109,84 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
     return ageText;
   };
 
-  // Exibir procedimentos baseado no tipo
-  const getProceduresDisplay = () => {
-    if (surgery?.type === 'sus') {
-      return (
-        <div className="space-y-2">
-          <div>
-            <label className="text-gray-500 text-xs uppercase tracking-wide">Cirurgia Proposta</label>
-            <p className="text-sm text-gray-900">{surgery?.proposedSurgery || 'Não informado'}</p>
-          </div>
-          {surgery?.performedSurgery && (
-            <div>
-              <label className="text-gray-500 text-xs uppercase tracking-wide">Cirurgia Realizada</label>
-              <p className="text-sm text-gray-900">{surgery.performedSurgery}</p>
-            </div>
-          )}
-        </div>
-      );
-    } else if (surgery?.type === 'convenio' && surgery?.cbhpmProcedures) {
-      return (
-        <div>
-          <label className="text-gray-500 text-xs uppercase tracking-wide inline-block bg-blue-50 text-blue-800 font-medium px-2 py-1 rounded-full">
-            Procedimentos
-          </label>
-          <div className="space-y-2">
-            {surgery.cbhpmProcedures.map((proc, index) => (
-              proc.codigo && (
-                <div key={index} className="flex items-center justify-between">
-                  <p className="text-sm text-gray-900">
-                   {proc.codigo} - {proc.procedimento}
-                  </p>
-                  {proc.porte_anestesico && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                      Porte: {proc.porte_anestesico}
-                    </span>
-                  )}
-                </div>
-              )
-            ))}
-          </div>
-        </div>
-      );
+  // Exibir data formatada da cirurgia
+  const getSurgeryDateDisplay = () => {
+    if (!surgery?.startTime) return 'Não informado';
+    
+    let surgeryDate;
+    if (surgery.startTime.seconds) {
+      surgeryDate = new Date(surgery.startTime.seconds * 1000);
+    } else if (surgery.startTime.toDate) {
+      surgeryDate = surgery.startTime.toDate();
+    } else {
+      surgeryDate = new Date(surgery.startTime);
     }
-    return null;
+    
+    return surgeryDate.toLocaleDateString('pt-BR');
+  };
+
+  // Exibir horário da cirurgia
+  const getSurgeryTimeDisplay = () => {
+    if (!surgery?.startTime) return 'Não informado';
+    
+    let surgeryDate;
+    if (surgery.startTime.seconds) {
+      surgeryDate = new Date(surgery.startTime.seconds * 1000);
+    } else if (surgery.startTime.toDate) {
+      surgeryDate = surgery.startTime.toDate();
+    } else {
+      surgeryDate = new Date(surgery.startTime);
+    }
+    
+    return surgeryDate.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  // Preparar dados para edição (formato que PatientFormFields espera)
+  const prepareEditData = () => {
+    // Preparar dados do hospital
+    let hospitalValue = procedure?.hospital || '';
+    if (typeof hospitalValue === 'object') {
+      hospitalValue = JSON.stringify(hospitalValue);
+    }
+
+    // Preparar data de nascimento no formato correto
+    let birthDateValue = '';
+    if (patient?.birthDate) {
+      const birthDate = new Date(patient.birthDate);
+      birthDateValue = birthDate.toISOString().split('T')[0]; // formato YYYY-MM-DD
+    }
+
+    return {
+      // Dados do paciente
+      patientName: patient?.name || '',
+      patientBirthDate: birthDateValue,
+      patientSex: patient?.sex || '',
+      patientCNS: patient?.cns || '',
+      
+      // Dados do procedimento
+      procedureType: procedure?.procedureType || 'sus',
+      patientWeight: procedure?.patientWeight?.toString() || '',
+      hospital: hospitalValue,
+      hospitalRecord: procedure?.hospitalRecord || '',
+      proposedSurgery: procedure?.procedimento || '',
+      insuranceNumber: procedure?.insuranceNumber || '',
+      insuranceName: procedure?.insuranceName || '',
+      cbhpmProcedures: procedure?.cbhpmProcedures && procedure.cbhpmProcedures.length > 0 
+        ? procedure.cbhpmProcedures 
+        : [{ codigo: '', procedimento: '', porte_anestesico: '' }],
+      mainSurgeon: procedure?.mainSurgeon || '',
+      auxiliarySurgeons: procedure?.auxiliarySurgeons && procedure.auxiliarySurgeons.length > 0
+        ? procedure.auxiliarySurgeons
+        : [{ name: '' }],
+      
+      // Dados específicos da cirurgia
+      patientPosition: surgery?.patientPosition || '',
+      performedSurgery: surgery?.performedSurgery || '',
+      observations: surgery?.observations || ''
+    };
   };
 
   if (!isEditing) {
@@ -181,7 +215,7 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Nome</span>
-              <span className="font-medium text-gray-800">{surgery?.patientName || 'Não informado'}</span>
+              <span className="font-medium text-gray-800">{patient?.name || 'Não informado'}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Idade</span>
@@ -189,42 +223,43 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Sexo</span>
-              <span className="font-medium text-gray-800 capitalize">{surgery?.patientSex || 'Não informado'}</span>
+              <span className="font-medium text-gray-800 capitalize">{patient?.sex || 'Não informado'}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Peso</span>
-              <span className="font-medium text-gray-800">{surgery?.patientWeight ? `${surgery.patientWeight} kg` : 'Não informado'}</span>
+              <span className="font-medium text-gray-800">{procedure?.patientWeight ? `${procedure.patientWeight} kg` : 'Não informado'}</span>
             </div>
           </div>
 
           {/* Dados específicos por tipo */}
-          {surgery?.type === 'sus' && (
+          {procedure?.procedureType === 'sus' && (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">CNS</label>
-                <p className="text-sm text-gray-900">{surgery?.patientCNS || 'Não informado'}</p>
+                <p className="text-sm text-gray-900">{patient?.cns || 'Não informado'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Registro Hospital</label>
-                <p className="text-sm text-gray-900">{surgery?.hospitalRecord || 'Não informado'}</p>
+                <p className="text-sm text-gray-900">{procedure?.hospitalRecord || 'Não informado'}</p>
               </div>
             </div>
           )}
 
-          {surgery?.type === 'convenio' && (
+          {procedure?.procedureType === 'convenio' && (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">Matrícula Convênio</label>
-                <p className="text-sm text-gray-900">{surgery?.insuranceNumber || 'Não informado'}</p>
+                <p className="text-sm text-gray-900">{procedure?.insuranceNumber || 'Não informado'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Nome do Convênio</label>
-                <p className="text-sm text-gray-900">{surgery?.insuranceName || 'Não informado'}</p>
+                <p className="text-sm text-gray-900">{procedure?.insuranceName || 'Não informado'}</p>
               </div>
             </div>
           )}
         </div>
 
+        {/* Dados da cirurgia */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
           <div className="flex items-center gap-2 text-primary-600 mb-4">
             <Calendar className="h-5 w-5" />
@@ -234,16 +269,16 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Data</span>
-              <span className="font-medium text-gray-800">{surgery?.surgeryDate || 'Não informado'}</span>
+              <span className="font-medium text-gray-800">{getSurgeryDateDisplay()}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Horário</span>
-              <span className="font-medium text-gray-800">{surgery?.surgeryTime || 'Não informado'}</span>
+              <span className="font-medium text-gray-800">{getSurgeryTimeDisplay()}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Tipo</span>
               <span className="font-medium text-gray-800 capitalize">
-                {surgery?.type === 'sus' ? 'SUS' : surgery?.type === 'convenio' ? 'Convênio' : 'Não definido'}
+                {procedure?.procedureType === 'sus' ? 'SUS' : procedure?.procedureType === 'convenio' ? 'Convênio' : 'Não definido'}
               </span>
             </div>
             <div className="flex flex-col">
@@ -253,11 +288,11 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           </div>
 
           <div className="mt-6">
-            {surgery?.type === 'sus' ? (
+            {procedure?.procedureType === 'sus' ? (
               <div className="space-y-2">
                 <div>
                   <label className="text-sm font-medium text-gray-600">Cirurgia Proposta</label>
-                  <p className="text-sm text-gray-900">{surgery?.proposedSurgery || 'Não informado'}</p>
+                  <p className="text-sm text-gray-900">{procedure?.procedimento || 'Não informado'}</p>
                 </div>
                 {surgery?.performedSurgery && (
                   <div>
@@ -266,13 +301,13 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
                   </div>
                 )}
               </div>
-            ) : surgery?.type === 'convenio' && surgery?.cbhpmProcedures ? (
+            ) : procedure?.procedureType === 'convenio' && procedure?.cbhpmProcedures ? (
               <div>
                 <label className="text-gray-500 text-xs uppercase tracking-wide inline-block bg-blue-50 text-blue-800 font-medium px-2 py-1 rounded-full">
                   Procedimentos
                 </label>
                 <div className="space-y-2 mt-2">
-                  {[...surgery.cbhpmProcedures]
+                  {[...procedure.cbhpmProcedures]
                     .sort((a, b) => (parseInt(b.porte_anestesico) || 0) - (parseInt(a.porte_anestesico) || 0))
                     .map((proc, index) => (
                       proc.codigo && (
@@ -288,7 +323,12 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
                     ))}
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div>
+                <label className="text-sm font-medium text-gray-600">Procedimento</label>
+                <p className="text-sm text-gray-900">{procedure?.procedimento || 'Não informado'}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -302,7 +342,7 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Cirurgião Principal</span>
-              <span className="font-medium text-gray-800">{surgery?.mainSurgeon || 'Não informado'}</span>
+              <span className="font-medium text-gray-800">{procedure?.mainSurgeon || 'Não informado'}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs uppercase tracking-wide">Posicionamento</span>
@@ -311,14 +351,33 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           </div>
 
           {/* Cirurgiões Auxiliares */}
-          {surgery?.auxiliarySurgeons && surgery.auxiliarySurgeons.some(aux => aux.name) && (
+          {procedure?.auxiliarySurgeons && procedure.auxiliarySurgeons.some(aux => aux.name) && (
             <div className="mt-4">
               <label className="text-sm font-medium text-gray-600">Cirurgiões Auxiliares</label>
               <div className="space-y-1">
-                {surgery.auxiliarySurgeons.map((aux, index) => (
+                {procedure.auxiliarySurgeons.map((aux, index) => (
                   aux.name && (
                     <p key={index} className="text-sm text-gray-900">{aux.name}</p>
                   )
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Anestesistas */}
+          {surgery?.anesthetists && surgery.anesthetists.length > 0 && (
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-600">Anestesistas</label>
+              <div className="space-y-1">
+                {surgery.anesthetists.map((anest, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <p className="text-sm text-gray-900">{anest.doctorName}</p>
+                    {anest.isActive && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Ativo
+                      </span>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -347,8 +406,11 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
 
       {/* Formulário de edição usando PatientFormFields */}
       <PatientFormFields
-        initialData={surgery}
-        surgeryType={surgery?.type}
+        mode="edit_procedure"
+        existingPatient={patient}
+        initialProcedureData={prepareEditData()}
+        procedureType={procedure?.procedureType}
+        currentUser={{ uid: 'current-user' }} // Você pode passar o usuário real aqui
         onSubmit={handleSave}
         isLoading={isSaving}
         submitButtonText={
@@ -358,7 +420,6 @@ const IdentificationSection = ({ surgery, onDataChange, autoSave }) => {
           </>
         }
         showTitle={false}
-        mode="edit"
         onAutoSave={handleAutoSave}
         onDataChange={handleDataChange}
       />

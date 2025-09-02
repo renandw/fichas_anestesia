@@ -1,23 +1,37 @@
 import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../../hooks/useAuth';
-import { checkCRMExists } from '../../services/firestore';
+import { useAuth } from '../../contexts/AuthContext'; // ✅ MUDOU: novo path
 import { Eye, EyeOff, Stethoscope } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [crmChecking, setCrmChecking] = useState(false);
-  const { signup, user } = useAuth();
+  const { signup, user, isAuthenticated } = useAuth(); // ✅ MUDOU: usando isAuthenticated
   
   const { register, handleSubmit, formState: { errors }, watch, setError, clearErrors } = useForm();
   const watchPassword = watch('password');
 
+  // ✅ MUDOU: Função de verificação de CRM movida para o componente
+  const checkCRMExists = async (crm) => {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('crm', '==', crm));
+      const querySnapshot = await getDocs(q);
+      
+      return !querySnapshot.empty;
+    } catch (error) {
+      console.error('Erro ao verificar CRM:', error);
+      throw error;
+    }
+  };
+
   // Verificar CRM em tempo real
   const validateCRM = async (crm) => {
-    if (!crm || crm.length < 5) return true; // Não validar se muito curto
+    if (!crm || crm.length < 5) return true;
     
     setCrmChecking(true);
     try {
@@ -34,23 +48,32 @@ const SignUp = () => {
       }
     } catch (error) {
       console.error('Erro ao validar CRM:', error);
-      return true; // Continuar em caso de erro de rede
+      return true;
     } finally {
       setCrmChecking(false);
     }
   };
 
-  // Redirecionar se já estiver logado
-  if (user) {
+  // ✅ MUDOU: Usando isAuthenticated em vez de só user
+  if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
+      console.log('📝 Dados do formulário:', data);
+      
+      // ✅ MUDOU: Novo AuthContext já trata tudo automaticamente
       await signup(data);
+      
+      // Se chegou aqui, signup foi bem-sucedido
+      // O AuthContext já mostra toast de sucesso
+      console.log('✅ Cadastro realizado com sucesso');
+      
     } catch (error) {
-      // Erro já tratado no hook useAuth
+      console.error('❌ Erro no cadastro:', error);
+      // Erro já tratado no AuthContext com toast
     } finally {
       setIsLoading(false);
     }
@@ -138,13 +161,9 @@ const SignUp = () => {
                   required: 'Celular é obrigatório'
                 })}
                 onChange={(e) => {
-                  // Remove tudo que não for número
                   const numbers = e.target.value.replace(/\D/g, '');
-                  
-                  // Limita a 11 dígitos
                   const limitedNumbers = numbers.slice(0, 11);
                   
-                  // Aplica a máscara automaticamente
                   let formatted = limitedNumbers;
                   if (limitedNumbers.length >= 11) {
                     formatted = limitedNumbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
@@ -205,8 +224,6 @@ const SignUp = () => {
                 <p className="text-green-600 text-sm mt-1">✓ CRM disponível</p>
               )}
             </div>
-
-
 
             {/* Empresas */}
             <div className="form-group">

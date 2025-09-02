@@ -1,0 +1,22 @@
+# Imagem base
+FROM node:18
+
+# Diretório de trabalho
+WORKDIR /app
+
+# Instala dependências
+COPY package*.json ./
+RUN npm install
+
+# Copia o código
+COPY . .
+
+# Garante que o dev server aceite conexões externas e use a porta 4000
+ENV HOST=0.0.0.0
+ENV PORT=4000
+
+# Expõe a porta 4000
+EXPOSE 4000
+
+# Sobe o app em modo desenvolvimento
+CMD ["npm", "start"]

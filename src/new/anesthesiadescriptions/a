@@ -1,0 +1,639 @@
+import React, { useState, useCallback, useEffect } from 'react';
+
+// Utilitários para cálculos (fora do componente)
+const calculateAge = (birthDate, surgeryDate) => {
+  if (!birthDate || !surgeryDate) return null;
+  const birth = new Date(birthDate);
+  const surgery = new Date(surgeryDate);
+  let age = surgery.getFullYear() - birth.getFullYear();
+  const monthDiff = surgery.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && surgery.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const getSuggestedTOT = (age, sex) => {
+  if (age === null) return '';
+  if (age === 0) return '3.0';
+  if (age < 12) return ((age / 4) + 3.5).toFixed(1);
+  return sex?.toUpperCase() === 'F' ? '7.0' : '7.5';
+};
+
+const isPediatric = (age) => age !== null && age < 12;
+
+// Geradores de texto (funções puras)
+const generateMonitoringText = (monitoring) => {
+  const items = [];
+  if (monitoring.cardioscopia) items.push('cardioscopia');
+  if (monitoring.oximetria) items.push('oximetria');
+  if (monitoring.pani) items.push('PANI');
+  if (monitoring.capnografia) items.push('capnografia');
+  if (monitoring.pai) items.push('PAI');
+  if (monitoring.pvc) items.push('PVC');
+  if (monitoring.termometro) items.push('termômetro');
+  if (monitoring.bis) items.push('BIS');
+  if (monitoring.tof) items.push('TOF');
+  
+  if (items.length === 0) return '';
+  return `Monitorização: ${items.join(', ')}.`;
+};
+
+const generateAdmissionText = (admission, isChild) => {
+  const parts = [];
+  
+  const ventMap = {
+    espontanea: 'ventilação espontânea',
+    vm_invasiva: 'ventilação mecânica invasiva', 
+    vm_nao_invasiva: 'ventilação mecânica não invasiva'
+  };
+  
+  const oxygenMap = {
+    ar_ambiente: 'ar ambiente',
+    cateter_2l: 'O₂ por cateter nasal 2 L/min',
+    mascara_5l: 'O₂ por máscara facial 5 L/min'
+  };
+  
+  const hemoMap = {
+    estavel: 'hemodinamicamente estável',
+    instavel: 'hemodinamicamente instável'
+  };
+  
+  if (admission.ventilatory) parts.push(ventMap[admission.ventilatory]);
+  if (admission.oxygen) parts.push(oxygenMap[admission.oxygen]);
+  if (admission.hemodynamic) parts.push(hemoMap[admission.hemodynamic]);
+  
+  if (parts.length === 0) return '';
+  
+  const base = isChild ? 'Paciente pediátrico admitido em sala cirúrgica' : 'Paciente admitido em sala cirúrgica';
+  return `${base}, ${parts.join(', ')}.`;
+};
+
+const generateTechniqueText = (technique) => {
+  const texts = [];
+  
+  if (technique.geral) {
+    const tot = technique.totNumber || '7.0';
+    const cormack = technique.cormack || 'I';
+    const fixacao = technique.fixacao || '21';
+    
+    texts.push(
+      `Indução anestésica: a) Desnitrogenização com O₂ 100%; b) Drogas utilizadas conforme seção de medicamentos; c) Intubação orotraqueal com TOT n° ${tot} sob laringoscopia direta (Cormack-Lehane ${cormack}); d) Tubo fixado a ${fixacao} cm na comissura labial.\nManutenção com drogas descritas em seção de medicações, sob ventilação mecânica. Parâmetros ventilatórios e monitoração contínua mantidos; proteção ocular.`
+    );
+  }
+  
+  if (technique.raquianestesia) {
+    texts.push(
+      `Raquianestesia: a) Posicionamento em decúbito lateral; b) Assepsia e antissepsia; c) Punção única no espaço subaracnóide, LCR límpido; d) Medicações conforme seção de medicamentos.\nTeste de bloqueio com estímulos térmicos e motores.`
+    );
+  }
+  
+  if (technique.sedacao) {
+    texts.push(
+      `Sedação consciente com medicações descritas na seção de medicamentos.\nSuplementa O₂ via cateter nasal.`
+    );
+  }
+  
+  return texts.join('\n\n');
+};
+
+const generateCompletionText = (completion) => {
+  const parts = [];
+  
+  if (completion.positionReview === true) {
+    parts.push('Revisão de posicionamento realizada.');
+  }
+  
+  if (completion.standardEnd === true) {
+    parts.push('Ao término da cirurgia, paciente com respiração espontânea, obedecendo comandos, boa mecânica ventilatória e oximetria estável.');
+  }
+  
+  if (completion.destination) {
+    const destination = completion.destination === 'uti' ? 'UTI' : 'RPA';
+    parts.push(`Encaminhado à ${destination} em boas condições clínicas.`);
+  }
+  
+  return parts.join(' ');
+};
+
+// Componente de botão salvar
+const SaveButton = ({ section, hasChanges, isSaving, onSave, everSaved }) => {
+  if (isSaving) {
+    return (
+      <button 
+        disabled 
+        className="px-3 py-1 bg-gray-400 text-white rounded text-sm flex items-center gap-1"
+      >
+        <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+        Salvando...
+      </button>
+    );
+  }
+  
+  if (!hasChanges && everSaved) {
+    return (
+      <button 
+        disabled 
+        className="px-3 py-1 bg-green-500 text-white rounded text-sm"
+      >
+        ✓ Salvo
+      </button>
+    );
+  }
+  
+  if (hasChanges) {
+    return (
+      <button 
+        onClick={onSave}
+        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+      >
+        💾 Salvar {section}
+      </button>
+    );
+  }
+  
+  // Seção nunca tocada/salva
+  return (
+    <button 
+      disabled 
+      className="px-3 py-1 bg-gray-300 text-gray-500 rounded text-sm"
+    >
+      Salvar {section}
+    </button>
+  );
+};
+
+// Componente principal
+const AnesthesiaDescription = ({ patient, surgery, anesthesia, onUpdate }) => {
+  // Estados separados para cada seção
+  const [data, setData] = useState({
+    monitoring: {},
+    admission: {},
+    technique: {},
+    completion: {}
+  });
+  
+  // Estados salvos (do Firestore)
+  const [savedData, setSavedData] = useState({
+    monitoring: {},
+    admission: {},
+    technique: {},
+    completion: {}
+  });
+  
+  // Estados de salvamento para cada seção
+  const [savingStatus, setSavingStatus] = useState({
+    monitoring: false,
+    admission: false,
+    technique: false,
+    completion: false
+  });
+  
+  // Estado para rastrear seções que já foram salvas pelo menos uma vez
+  const [everSaved, setEverSaved] = useState({
+    monitoring: false,
+    admission: false,
+    technique: false,
+    completion: false
+  });
+  
+  const [copied, setCopied] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Carrega dados existentes do Firestore
+  useEffect(() => {
+    if (anesthesia?.anesthesiaDescription) {
+      console.log('🔄 Carregando dados do Firestore:', anesthesia.anesthesiaDescription);
+      const firestoreData = {
+        monitoring: anesthesia.anesthesiaDescription.monitoring || {},
+        admission: anesthesia.anesthesiaDescription.admission || {},
+        technique: anesthesia.anesthesiaDescription.technique || {},
+        completion: anesthesia.anesthesiaDescription.completion || {}
+      };
+      setData(firestoreData);
+      setSavedData(firestoreData);
+      
+      // Marca seções com dados como "já salvas pelo menos uma vez"
+      setEverSaved({
+        monitoring: Object.keys(firestoreData.monitoring).length > 0,
+        admission: Object.keys(firestoreData.admission).length > 0,
+        technique: Object.keys(firestoreData.technique).length > 0,
+        completion: Object.keys(firestoreData.completion).length > 0
+      });
+    }
+    setIsInitialized(true);
+  }, [anesthesia?.anesthesiaDescription]);
+  
+  // Dados derivados
+  const age = calculateAge(patient?.patientBirthDate, surgery?.surgeryDate);
+  const isChild = isPediatric(age);
+  const suggestedTOT = getSuggestedTOT(age, patient?.patientSex);
+  
+  // Verificar se há mudanças não salvas por seção
+  const hasUnsavedChanges = useCallback((section) => {
+    return JSON.stringify(data[section]) !== JSON.stringify(savedData[section]);
+  }, [data, savedData]);
+  
+  // Handler para atualizar dados localmente (sem salvar)
+  const updateSection = useCallback((section, field, value) => {
+    setData(prev => {
+      const newData = {
+        ...prev,
+        [section]: { ...prev[section], [field]: value }
+      };
+      
+      // Auto-sugestão para TOT
+      if (section === 'technique' && field === 'geral' && value && !prev.technique.totNumber) {
+        newData.technique.totNumber = suggestedTOT;
+        newData.technique.fixacao = ((parseFloat(suggestedTOT) || 7) * 3).toFixed(0);
+      }
+      
+      return newData;
+    });
+  }, [suggestedTOT]);
+  
+  // Handler para salvar seção específica
+  const saveSection = useCallback(async (section) => {
+    if (!hasUnsavedChanges(section) || !onUpdate) return;
+    
+    setSavingStatus(prev => ({ ...prev, [section]: true }));
+    
+    try {
+      // Salva APENAS a seção específica
+      const sectionUpdate = {
+        [`anesthesiaDescription.${section}`]: data[section]
+      };
+      
+      console.log(`💾 Salvando seção ${section}:`, sectionUpdate);
+      
+      await onUpdate(sectionUpdate);
+      
+      // Atualiza dados salvos
+      setSavedData(prev => ({
+        ...prev,
+        [section]: data[section]
+      }));
+      
+      // Marca como "já salva pelo menos uma vez"
+      setEverSaved(prev => ({
+        ...prev,
+        [section]: true
+      }));
+      
+    } catch (error) {
+      console.error(`❌ Erro ao salvar ${section}:`, error);
+      alert(`Erro ao salvar ${section}. Tente novamente.`);
+    } finally {
+      setSavingStatus(prev => ({ ...prev, [section]: false }));
+    }
+  }, [data, savedData, hasUnsavedChanges, onUpdate]);
+  
+  // Geração do texto completo (usa dados salvos + mudanças locais)
+  const generateFullText = useCallback(() => {
+    const sections = [
+      generateMonitoringText(data.monitoring),
+      generateAdmissionText(data.admission, isChild),
+      generateTechniqueText(data.technique),
+      generateCompletionText(data.completion)
+    ].filter(Boolean);
+    
+    return sections.join('\n\n') || 'Complete e salve as seções para gerar a descrição...';
+  }, [data, isChild]);
+  
+  // Copy handler
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(generateFullText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Erro ao copiar:', err);
+    }
+  }, [generateFullText]);
+  
+  // Verificar se há mudanças não salvas em qualquer seção
+  const hasAnyUnsavedChanges = ['monitoring', 'admission', 'technique', 'completion']
+    .some(section => hasUnsavedChanges(section));
+  
+  // Loading state
+  if (!isInitialized) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      {/* Aviso de mudanças não salvas */}
+      {hasAnyUnsavedChanges && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <p className="text-sm text-yellow-800">
+            ⚠️ Você tem alterações não salvas. Salve cada seção antes de sair da página.
+          </p>
+        </div>
+      )}
+      
+      {/* 1. MONITORIZAÇÃO */}
+      <div className="bg-white border rounded-lg p-4">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-semibold text-gray-900">1. Monitorização</h3>
+          <SaveButton
+            section="Monitorização"
+            hasChanges={hasUnsavedChanges('monitoring')}
+            isSaving={savingStatus.monitoring}
+            onSave={() => saveSection('monitoring')}
+            everSaved={everSaved.monitoring}
+          />
+        </div>
+        
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            { key: 'cardioscopia', label: 'Cardioscopia' },
+            { key: 'oximetria', label: 'Oximetria' },
+            { key: 'pani', label: 'PANI' },
+            { key: 'capnografia', label: 'Capnografia' },
+            { key: 'pai', label: 'PAI' },
+            { key: 'pvc', label: 'PVC' },
+            { key: 'termometro', label: 'Termômetro' },
+            { key: 'bis', label: 'BIS' },
+            { key: 'tof', label: 'TOF' }
+          ].map(option => (
+            <label key={option.key} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.monitoring[option.key] || false}
+                onChange={(e) => updateSection('monitoring', option.key, e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-sm">{option.label}</span>
+            </label>
+          ))}
+        </div>
+        
+        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+          {generateMonitoringText(data.monitoring) || 'Selecione os monitores utilizados...'}
+        </div>
+      </div>
+
+      {/* 2. ADMISSÃO */}
+      <div className="bg-white border rounded-lg p-4">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-semibold text-gray-900">2. Condições de Admissão</h3>
+          <SaveButton
+            section="Admissão"
+            hasChanges={hasUnsavedChanges('admission')}
+            isSaving={savingStatus.admission}
+            onSave={() => saveSection('admission')}
+            everSaved={everSaved.admission}
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Ventilação</label>
+            <select 
+              value={data.admission.ventilatory || ''} 
+              onChange={(e) => updateSection('admission', 'ventilatory', e.target.value)}
+              className="w-full border rounded px-3 py-2 text-sm"
+            >
+              <option value="">Selecione...</option>
+              <option value="espontanea">Espontânea</option>
+              <option value="vm_invasiva">VM Invasiva</option>
+              <option value="vm_nao_invasiva">VM Não Invasiva</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Oxigenação</label>
+            <select 
+              value={data.admission.oxygen || ''} 
+              onChange={(e) => updateSection('admission', 'oxygen', e.target.value)}
+              className="w-full border rounded px-3 py-2 text-sm"
+            >
+              <option value="">Selecione...</option>
+              <option value="ar_ambiente">Ar ambiente</option>
+              <option value="cateter_2l">Cateter O₂ 2L/min</option>
+              <option value="mascara_5l">Máscara O₂ 5L/min</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Hemodinâmica</label>
+            <select 
+              value={data.admission.hemodynamic || ''} 
+              onChange={(e) => updateSection('admission', 'hemodynamic', e.target.value)}
+              className="w-full border rounded px-3 py-2 text-sm"
+            >
+              <option value="">Selecione...</option>
+              <option value="estavel">Estável</option>
+              <option value="instavel">Instável</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+          {generateAdmissionText(data.admission, isChild) || 'Selecione as condições de admissão...'}
+        </div>
+      </div>
+
+      {/* 3. TÉCNICA ANESTÉSICA */}
+      <div className="bg-white border rounded-lg p-4">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-semibold text-gray-900">3. Técnica Anestésica</h3>
+          <SaveButton
+            section="Técnica"
+            hasChanges={hasUnsavedChanges('technique')}
+            isSaving={savingStatus.technique}
+            onSave={() => saveSection('technique')}
+            everSaved={everSaved.technique}
+          />
+        </div>
+        
+        <div className="space-y-4">
+          {/* Anestesia Geral */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.technique.geral || false}
+                onChange={(e) => updateSection('technique', 'geral', e.target.checked)}
+                className="rounded"
+              />
+              <span className="font-medium">Anestesia Geral</span>
+            </label>
+            
+            {data.technique.geral && (
+              <div className="ml-6 mt-2 grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">TOT nº</label>
+                  <input
+                    type="text"
+                    value={data.technique.totNumber || ''}
+                    onChange={(e) => updateSection('technique', 'totNumber', e.target.value)}
+                    placeholder={suggestedTOT}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Cormack-Lehane</label>
+                  <select 
+                    value={data.technique.cormack || ''} 
+                    onChange={(e) => updateSection('technique', 'cormack', e.target.value)}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="">-</option>
+                    <option value="I">I</option>
+                    <option value="II">II</option>
+                    <option value="III">III</option>
+                    <option value="IV">IV</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Fixação (cm)</label>
+                  <input
+                    type="text"
+                    value={data.technique.fixacao || ''}
+                    onChange={(e) => updateSection('technique', 'fixacao', e.target.value)}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Outras técnicas */}
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.technique.raquianestesia || false}
+                onChange={(e) => updateSection('technique', 'raquianestesia', e.target.checked)}
+                className="rounded"
+              />
+              <span>Raquianestesia</span>
+            </label>
+            
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.technique.sedacao || false}
+                onChange={(e) => updateSection('technique', 'sedacao', e.target.checked)}
+                className="rounded"
+              />
+              <span>Sedação</span>
+            </label>
+          </div>
+        </div>
+        
+        <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
+          {generateTechniqueText(data.technique) || 'Selecione a técnica anestésica...'}
+        </div>
+      </div>
+
+      {/* 4. FINALIZAÇÃO */}
+      <div className="bg-white border rounded-lg p-4">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-semibold text-gray-900">4. Finalização</h3>
+          <SaveButton
+            section="Finalização"
+            hasChanges={hasUnsavedChanges('completion')}
+            isSaving={savingStatus.completion}
+            onSave={() => saveSection('completion')}
+            everSaved={everSaved.completion}
+          />
+        </div>
+        
+        <div className="space-y-3 mb-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={data.completion.positionReview === true}
+              onChange={(e) => updateSection('completion', 'positionReview', e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-sm">Revisão de posicionamento realizada</span>
+          </label>
+          
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={data.completion.standardEnd === true}
+              onChange={(e) => updateSection('completion', 'standardEnd', e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-sm">Finalização padrão (boa mecânica ventilatória, etc.)</span>
+          </label>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Encaminhado para:</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="destination"
+                  value="rpa"
+                  checked={data.completion.destination === 'rpa'}
+                  onChange={(e) => updateSection('completion', 'destination', e.target.value)}
+                  className="rounded"
+                />
+                <span className="text-sm">RPA</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="destination"
+                  value="uti"
+                  checked={data.completion.destination === 'uti'}
+                  onChange={(e) => updateSection('completion', 'destination', e.target.value)}
+                  className="rounded"
+                />
+                <span className="text-sm">UTI</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+          {generateCompletionText(data.completion)}
+        </div>
+      </div>
+
+      {/* DESCRIÇÃO FINAL */}
+      <div className="bg-white border rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-gray-900">Descrição Anestésica Final</h3>
+          <button
+            onClick={handleCopy}
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+              copied 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {copied ? '✓ Copiado!' : '📋 Copiar'}
+          </button>
+        </div>
+        
+        <div className="bg-gray-50 p-4 rounded text-sm whitespace-pre-line leading-relaxed border">
+          {generateFullText()}
+        </div>
+        
+        <div className="mt-2 text-xs text-gray-500 flex justify-between">
+          <span>
+            {isChild ? '👶 Paciente pediátrico' : '👤 Paciente adulto'}
+            {age !== null && ` • ${age} anos`}
+            {patient?.patientSex && ` • ${patient.patientSex === 'M' ? 'Masculino' : 'Feminino'}`}
+          </span>
+          <span>{generateFullText().length} caracteres</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AnesthesiaDescription;

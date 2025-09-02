@@ -6,10 +6,8 @@ import { updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCrede
 import { auth } from '../services/firebase';
 import { 
   User, 
-  Mail, 
-  Phone, 
+  Mail,  
   Lock, 
-  Building, 
   Save, 
   Eye, 
   EyeOff,

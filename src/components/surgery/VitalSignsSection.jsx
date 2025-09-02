@@ -78,7 +78,18 @@ const VitalSignsSection = ({
   const [editFormData, setEditFormData] = useState({});
   // Funções auxiliares para edição inline
   const handleEditChange = (field, value) => {
-    setEditFormData(prev => ({ ...prev, [field]: value }));
+    setEditFormData(prev => {
+      const next = { ...prev, [field]: value };
+      // Recalcular PAM ao editar sist/diast
+      if (field === 'pasSistolica' || field === 'pasDiastolica') {
+        const s = Number(next.pasSistolica);
+        const d = Number(next.pasDiastolica);
+        if (!Number.isNaN(s) && !Number.isNaN(d)) {
+          next.pam = Math.round((2 * d + s) / 3);
+        }
+      }
+      return next;
+    });
   };
 
   const handleSaveEdit = (id) => {
@@ -655,6 +666,15 @@ const VitalSignsSection = ({
     vitalSigns.some(r => r[param] !== undefined && r[param] !== '')
   );
 
+  // Lista ordenada estável para renderização (evita re-montar inputs a cada tecla)
+  const sortedVitalSigns = React.useMemo(() => {
+    return [...vitalSigns].sort((a, b) => {
+      const t1 = a.absoluteTimestamp?.toDate?.() ?? new Date(a.absoluteTimestamp);
+      const t2 = b.absoluteTimestamp?.toDate?.() ?? new Date(b.absoluteTimestamp);
+      return t1 - t2;
+    });
+  }, [vitalSigns]);
+
   // Utilitário: retorna apenas os campos dinâmicos presentes no registro
   const getActiveFieldsForRecord = (record) => {
     return [
@@ -671,12 +691,7 @@ const VitalSignsSection = ({
   // CompactCards: versão mobile dos registros de sinais vitais em cartões (com edição inline)
   const CompactCards = () => (
     <div className="space-y-1">
-      {[...vitalSigns].sort((a, b) => {
-        // Safe Firestore Timestamp: prefer toDate() if available
-        const t1 = a.absoluteTimestamp?.toDate?.() ?? new Date(a.absoluteTimestamp);
-        const t2 = b.absoluteTimestamp?.toDate?.() ?? new Date(b.absoluteTimestamp);
-        return t1 - t2;
-      }).map((record) => (
+      {sortedVitalSigns.map((record) => (
         <div key={record.id} className="bg-white border rounded-lg p-3 shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-mono text-blue-600">
@@ -704,7 +719,7 @@ const VitalSignsSection = ({
                       // Garante todos os campos, mesmo se undefined/null, como string vazia
                       const initialFormData = {};
                       allFields.forEach((field) => {
-                        initialFormData[field] = record[field] !== undefined && record[field] !== null ? record[field] : '';
+                        initialFormData[field] = (record[field] !== undefined && record[field] !== null) ? String(record[field]) : '';
                       });
                       setEditFormData({
                         ...initialFormData,
@@ -749,7 +764,8 @@ const VitalSignsSection = ({
                     <label className="block text-xs font-medium text-gray-700 mb-1">FC:</label>
                     <input
                       type="number"
-                      value={editFormData.fc || ''}
+                      name="fc"
+                      value={String(editFormData.fc ?? '')}
                       onChange={(e) => handleEditChange('fc', e.target.value)}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                     />
@@ -758,7 +774,8 @@ const VitalSignsSection = ({
                     <label className="block text-xs font-medium text-gray-700 mb-1">SpO2:</label>
                     <input
                       type="number"
-                      value={editFormData.spo2 || ''}
+                      name="spo2"
+                      value={String(editFormData.spo2 ?? '')}
                       onChange={(e) => handleEditChange('spo2', e.target.value)}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                     />
@@ -767,7 +784,8 @@ const VitalSignsSection = ({
                     <label className="block text-xs font-medium text-gray-700 mb-1">PA Sist:</label>
                     <input
                       type="number"
-                      value={editFormData.pasSistolica || ''}
+                      name="pasSistolica"
+                      value={String(editFormData.pasSistolica ?? '')}
                       onChange={(e) => handleEditChange('pasSistolica', e.target.value)}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                     />
@@ -776,7 +794,8 @@ const VitalSignsSection = ({
                     <label className="block text-xs font-medium text-gray-700 mb-1">PA Diast:</label>
                     <input
                       type="number"
-                      value={editFormData.pasDiastolica || ''}
+                      name="pasDiastolica"
+                      value={String(editFormData.pasDiastolica ?? '')}
                       onChange={(e) => handleEditChange('pasDiastolica', e.target.value)}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                     />
@@ -786,6 +805,7 @@ const VitalSignsSection = ({
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Ritmo:</label>
                   <select
+                    name="ritmo"
                     value={editFormData.ritmo || ''}
                     onChange={(e) => handleEditChange('ritmo', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white"
@@ -808,8 +828,9 @@ const VitalSignsSection = ({
                       </label>
                       <input
                         type={param === 'pupillas' ? 'text' : 'number'}
+                        name={param}
                         step={param === 'temperatura' || param === 'lactato' || param === 'debitoCardiaco' ? '0.1' : '1'}
-                        value={editFormData[param] ?? ''}
+                        value={String(editFormData[param] ?? '')}
                         onChange={(e) => handleEditChange(param, e.target.value)}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                       />
@@ -1382,12 +1403,7 @@ const VitalSignsSection = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {[...vitalSigns].sort((a, b) => {
-                    // Safe Firestore Timestamp
-                    const t1 = a.absoluteTimestamp?.toDate?.() ?? new Date(a.absoluteTimestamp);
-                    const t2 = b.absoluteTimestamp?.toDate?.() ?? new Date(b.absoluteTimestamp);
-                    return t1 - t2;
-                  }).map((record, idx) => (
+                  {sortedVitalSigns.map((record, idx) => (
                     <React.Fragment key={record.id}>
                       <tr className={`border-b border-gray-100 ${idx % 2 === 1 ? 'even:bg-gray-25' : ''}`}>
                         <td className="px-4 py-3 text-base font-mono text-gray-900">
@@ -1427,9 +1443,10 @@ const VitalSignsSection = ({
                               // Preenche todos os campos editáveis mesmo que ausentes
                               const fixedFields = ['ritmo', 'fc', 'pasSistolica', 'pasDiastolica', 'pam', 'spo2'];
                               const allFields = [...fixedFields, ...activeDynamicColumns];
-                              const initialFormData = Object.fromEntries(
-                                allFields.map(field => [field, record.hasOwnProperty(field) ? record[field] : ''])
-                              );
+                              const initialFormData = {};
+                              allFields.forEach(field => {
+                                initialFormData[field] = (record[field] !== undefined && record[field] !== null) ? String(record[field]) : '';
+                              });
                               setEditFormData({
                                 ...initialFormData,
                                 id: record.id,
@@ -1451,7 +1468,7 @@ const VitalSignsSection = ({
                         </td>
                       </tr>
                       {editingRecord === record.id && (
-                        <tr className="bg-blue-50">
+                        <tr key={`edit-${record.id}`} className="bg-blue-50">
                           <td colSpan={7 + activeDynamicColumns.length} className="p-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Cardiovascular */}
@@ -1478,7 +1495,8 @@ const VitalSignsSection = ({
                                     </label>
                                     <input
                                       type="number"
-                                      value={editFormData.fc || ''}
+                                      name="fc"
+                                      value={String(editFormData.fc ?? '')}
                                       onChange={e => handleEditChange('fc', e.target.value)}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                     />
@@ -1491,7 +1509,8 @@ const VitalSignsSection = ({
                                     </label>
                                     <input
                                       type="number"
-                                      value={editFormData.pasSistolica || ''}
+                                      name="pasSistolica"
+                                      value={String(editFormData.pasSistolica ?? '')}
                                       onChange={e => handleEditChange('pasSistolica', e.target.value)}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                     />
@@ -1502,7 +1521,8 @@ const VitalSignsSection = ({
                                     </label>
                                     <input
                                       type="number"
-                                      value={editFormData.pasDiastolica || ''}
+                                      name="pasDiastolica"
+                                      value={String(editFormData.pasDiastolica ?? '')}
                                       onChange={e => handleEditChange('pasDiastolica', e.target.value)}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                     />
@@ -1513,7 +1533,8 @@ const VitalSignsSection = ({
                                     </label>
                                     <input
                                       type="number"
-                                      value={editFormData.pam || ''}
+                                      name="pam"
+                                      value={String(editFormData.pam ?? '')}
                                       onChange={e => handleEditChange('pam', e.target.value)}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                     />
@@ -1530,7 +1551,8 @@ const VitalSignsSection = ({
                                     </label>
                                     <input
                                       type="number"
-                                      value={editFormData.spo2 || ''}
+                                      name="spo2"
+                                      value={String(editFormData.spo2 ?? '')}
                                       onChange={e => handleEditChange('spo2', e.target.value)}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                     />
@@ -1541,7 +1563,8 @@ const VitalSignsSection = ({
                                     </label>
                                     <input
                                       type="number"
-                                      value={editFormData.etco2 || ''}
+                                      name="etco2"
+                                      value={String(editFormData.etco2 ?? '')}
                                       onChange={e => handleEditChange('etco2', e.target.value)}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                     />
@@ -1561,7 +1584,8 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
-                                          value={editFormData.bis || ''}
+                                          name="bis"
+                                          value={String(editFormData.bis ?? '')}
                                           onChange={e => handleEditChange('bis', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1586,7 +1610,8 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
-                                          value={editFormData.tof || ''}
+                                          name="tof"
+                                          value={String(editFormData.tof ?? '')}
                                           onChange={e => handleEditChange('tof', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1603,7 +1628,8 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
-                                          value={editFormData.glicemia || ''}
+                                          name="glicemia"
+                                          value={String(editFormData.glicemia ?? '')}
                                           onChange={e => handleEditChange('glicemia', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1614,8 +1640,9 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
+                                          name="lactato"
                                           step="0.1"
-                                          value={editFormData.lactato || ''}
+                                          value={String(editFormData.lactato ?? '')}
                                           onChange={e => handleEditChange('lactato', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1635,7 +1662,8 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
-                                          value={editFormData.fio2 || ''}
+                                          name="fio2"
+                                          value={String(editFormData.fio2 ?? '')}
                                           onChange={e => handleEditChange('fio2', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1646,7 +1674,8 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
-                                          value={editFormData.peep || ''}
+                                          name="peep"
+                                          value={String(editFormData.peep ?? '')}
                                           onChange={e => handleEditChange('peep', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1657,7 +1686,8 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
-                                          value={editFormData.volumeCorrente || ''}
+                                          name="volumeCorrente"
+                                          value={String(editFormData.volumeCorrente ?? '')}
                                           onChange={e => handleEditChange('volumeCorrente', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1674,7 +1704,8 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
-                                          value={editFormData.pvc || ''}
+                                          name="pvc"
+                                          value={String(editFormData.pvc ?? '')}
                                           onChange={e => handleEditChange('pvc', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1685,8 +1716,9 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
+                                          name="debitoCardiaco"
                                           step="0.1"
-                                          value={editFormData.debitoCardiaco || ''}
+                                          value={String(editFormData.debitoCardiaco ?? '')}
                                           onChange={e => handleEditChange('debitoCardiaco', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
@@ -1703,8 +1735,9 @@ const VitalSignsSection = ({
                                         </label>
                                         <input
                                           type="number"
+                                          name="temperatura"
                                           step="0.1"
-                                          value={editFormData.temperatura || ''}
+                                          value={String(editFormData.temperatura ?? '')}
                                           onChange={e => handleEditChange('temperatura', e.target.value)}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />

@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, Stethoscope } from 'lucide-react';
 
 const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signin, user } = useAuth();
+  const { signin, isAuthenticated } = useAuth();
   
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   // Redirecionar se já estiver logado
-  if (user) {
+  if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 

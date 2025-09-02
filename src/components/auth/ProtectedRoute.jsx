@@ -1,9 +1,9 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext'; // ✅ MUDOU: novo path
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth(); // ✅ MUDOU: isAuthenticated
 
   if (loading) {
     return (
@@ -16,7 +16,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated) { // ✅ MUDOU: de !user para !isAuthenticated
     return <Navigate to="/signin" replace />;
   }
 

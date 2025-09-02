@@ -3,15 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getUserSurgeries, getUserSurgeriesCount } from '../services/firestore';
 import { 
-  Search, 
   Filter, 
-  Calendar,
   FileText,
   Eye,
   ChevronLeft,
   ChevronRight,
-  X,
-  Download
+  X
 } from 'lucide-react';
 
 const Surgeries = () => {

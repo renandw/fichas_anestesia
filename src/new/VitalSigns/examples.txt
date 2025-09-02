@@ -1,0 +1,49 @@
+{
+    "horario": "12:10",
+    "ritmo": "Sinusal",
+    "fc": "83",
+    "pasSistolica": "132",
+    "pasDiastolica": "83",
+    "spo2": "100",
+    "etco2": "36",
+    "fio2": "100",
+    "peep": "5",
+    "volumeCorrente": "430",
+    "bis": "64",
+    "pupilas": "",
+    "tof": "3",
+    "pvc": "2",
+    "debitoCardiaco": "2",
+    "glicemia": "98",
+    "lactato": "24",
+    "temperatura": "35.3",
+    "diurese": "500",
+    "sangramento": "1000"
+}
+
+{
+vitalSigns (array) 0 (map)
+
+absoluteTimestamp 24 de agosto de 2025 às 12:10:00 UTC-4 (timestamp)
+bis 64 (number)
+debitoCardiaco 2 (number)
+diurese 500 (number)
+etco2 36 (number)
+fc 83 (number)
+fio2 100 (number)
+glicemia 98 (number)
+id "e31cccdc-b7a1-473d-960e-e4440cd33799" (string)
+lactato 24 (number)
+pam 99 (number)
+pasDiastolica 83 (number)
+pasSistolica 132 (number)
+peep 5 (number)
+pupilas null (null)
+pvc 2 (number)
+ritmo "Sinusal" (string)
+sangramento 1000 (number)
+spo2 100 (number)
+temperatura 35.3 (number)
+tof 3 (number)
+volumeCorrente 430 (number)
+}
