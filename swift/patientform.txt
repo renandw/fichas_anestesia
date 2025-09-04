@@ -1,0 +1,38 @@
+Resumo do que fizemos
+	•	PatientFormViewModel agora é reutilizável:
+	•	recebe o repositório por injeção (não cria Firestore sozinho);
+	•	não navega; ele emite eventos:
+saved(patient, action), duplicatesFound(context), selectedExisting(patientId).
+	•	PatientFormView virou um componente neutro:
+	•	mostra o formulário, valida, exibe a UI de duplicatas (sheet);
+	•	não fecha telas nem navega ao salvar; quem decide é o host.
+	•	NewAnesthesiaPage (wizard passo 1) e PatientListView (lista + criar/editar) já reutilizam o PatientForm.
+
+Como reutilizar o PatientForm em uma nova página
+
+(use isto como checklist)
+	1.	Decida o papel da nova página (host)
+	•	Ex.: “Criar paciente e depois ir para X” ou “Editar paciente e voltar”.
+	2.	Crie o repositório (no host)
+	•	Um por página/fluxo é suficiente.
+	•	Ex.: let repo = PatientFormRepositoryFirestore().
+	3.	Crie o ViewModel do formulário (no host)
+	•	Criar: PatientFormViewModel(repository: repo)
+	•	Editar: PatientFormViewModel(repository: repo, patient: pacienteExistente)
+	4.	Embuta o formulário
+	•	Use PatientFormView(viewModel: seuVM)
+	•	Pode ser na própria página, num sheet ou num NavigationStack.
+	5.	Reaja aos resultados (eventos)
+	•	Ouça seuVM.events:
+	•	saved(patient, action): o usuário salvou → faça o que quiser (feche sheet, navegue, atualize lista…).
+	•	selectedExisting(patientId): usuário escolheu um existente (a partir do modal de duplicatas) → decida (navegue/avance).
+	•	duplicatesFound(context): se quiser tratar no host, pode abrir sua própria UI; se não fizer nada, o próprio PatientFormView já mostra a UI padrão de duplicatas.
+	6.	(Opcional) Reaja ao estado
+	•	Você também pode observar seuVM.$state e, quando for .success, decidir navegar/fechar.
+	•	Não é obrigatório se já estiver usando os eventos.
+	7.	Cuide da navegação
+	•	O host controla: fechar modal, ir para próxima etapa, voltar, etc.
+	•	O formulário não toma essas decisões por você.
+	8.	Previews e testes (se quiser)
+	•	Para preview: crie o VM com um repo “fake” e passe para PatientFormView(viewModel:).
+	•	Para testes: como o VM recebe o repo por injeção, dá pra usar mocks facilmente.
