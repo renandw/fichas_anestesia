@@ -49,24 +49,34 @@ const PreAnestheticForm = ({
       pediatricOther: '',
 
       // Comorbidades por sistema
-      cardiovascular: {},
-      cardiovascularOther: '',
-      respiratory: {},
-      respiratoryOther: '',
-      endocrine: {},
-      endocrineOther: '',
-      digestive: {},
-      digestiveOther: '',
-      hematologic: {},
-      hematologicOther: '',
-      musculoskeletal: {},
-      musculoskeletalOther: '',
-      genitourinary: {},
-      genitourinaryOther: '',
-      neurologic: {},
-      neurologicOther: '',
-      geneticSyndromes: {},
-      geneticSyndromeOther: '',
+      cardiovascular: {
+        cardiovascularOther: ''
+      },
+      respiratory: {
+        respiratoryOther: ''
+      },
+      endocrine: {
+        endocrineOther: ''
+      },
+      digestive: {
+        digestiveOther: '',
+      },
+      hematologic: {
+        hematologicOther: '',
+      },
+      musculoskeletal: {
+        musculoskeletalOther: '',
+      },
+      genitourinary: {
+        genitourinaryOther: '',
+      },
+      neurologic: {
+        neurologicOther: '',
+      },
+      geneticSyndromes: {
+        geneticSyndromeOther: '',
+      },
+      
 
       // Histórico
       noPreviousSurgeries: false,
@@ -143,24 +153,50 @@ const PreAnestheticForm = ({
           pediatricConsiderations: data.pediatricConsiderations || {},
           pediatricOther: data.pediatricOther || '',
 
-          cardiovascular: data.cardiovascular || {},
-          cardiovascularOther: data.cardiovascularOther || '',
-          respiratory: data.respiratory || {},
-          respiratoryOther: data.respiratoryOther || '',
-          endocrine: data.endocrine || {},
-          endocrineOther: data.endocrineOther || '',
-          digestive: data.digestive || {},
-          digestiveOther: data.digestiveOther || '',
-          hematologic: data.hematologic || {},
-          hematologicOther: data.hematologicOther || '',
-          musculoskeletal: data.musculoskeletal || {},
-          musculoskeletalOther: data.musculoskeletalOther || '',
-          genitourinary: data.genitourinary || {},
-          genitourinaryOther: data.genitourinaryOther || '',
-          neurologic: data.neurologic || {},
-          neurologicOther: data.neurologicOther || '',
-          geneticSyndromes: data.geneticSyndromes || {},
-          geneticSyndromeOther: data.geneticSyndromeOther || '',
+          cardiovascular: {
+            ...data.cardiovascular,
+            cardiovascularOther: data.cardiovascular?.cardiovascularOther ?? ''
+          },
+
+          respiratory: {
+            ...data.respiratory,
+            respiratoryOther: data.respiratory?.respiratoryOther ?? ''
+          },
+
+          endocrine: {
+            ...data.endocrine,
+            endocrineOther: data.endocrine?.endocrineOther ?? ''
+          },
+
+          digestive: {
+            ...data.digestive,
+            digestiveOther: data.digestive?.digestiveOther ?? ''
+          },
+
+          hematologic: {
+            ...data.hematologic,
+            hematologicOther: data.hematologic?.hematologicOther ?? ''
+          },
+
+          musculoskeletal: {
+            ...data.musculoskeletal,
+            musculoskeletalOther: data.musculoskeletal?.musculoskeletalOther ?? ''
+          },
+
+          genitourinary: {
+            ...data.genitourinary,
+            genitourinaryOther: data.genitourinary?.genitourinaryOther ?? ''
+          },
+
+          neurologic: {
+            ...data.neurologic,
+            neurologicOther: data.neurologic?.neurologicOther ?? ''
+          },
+
+          geneticSyndromes: {
+            ...data.geneticSyndromes,
+            geneticSyndromeOther: data.geneticSyndromes?.geneticSyndromeOther ?? ''
+          },
 
           noPreviousSurgeries: data.noPreviousSurgeries || false,
           previousSurgeries: data.previousSurgeries || '',
@@ -531,7 +567,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('cardiovascularOther')}
+                {...register('cardiovascular.cardiovascularOther')}
               />
             </div>
 
@@ -568,7 +604,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('neurologicOther')}
+                {...register('neurologic.neurologicOther')}
               />
             </div>
 
@@ -605,7 +641,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('respiratoryOther')}
+                {...register('respiratory.respiratoryOther')}
               />
             </div>
 
@@ -642,7 +678,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('endocrineOther')}
+                {...register('endocrine.endocrineOther')}
               />
             </div>
 
@@ -675,7 +711,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('digestiveOther')}
+                {...register('digestive.digestiveOther')}
               />
             </div>
 
@@ -708,7 +744,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('hematologicOther')}
+                {...register('hematologic.hematologicOther')}
               />
             </div>
 
@@ -737,7 +773,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('musculoskeletalOther')}
+                {...register('musculoskeletal.musculoskeletalOther')}
               />
             </div>
 
@@ -770,7 +806,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('genitourinaryOther')}
+                {...register('genitourinary.genitourinaryOther')}
               />
             </div>
 
@@ -795,7 +831,7 @@ const PreAnestheticForm = ({
                 placeholder="Outras..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 rows="1"
-                {...register('geneticSyndromeOther')}
+                {...register('geneticSyndromes.geneticSyndromeOther')}
               />
             </div>
           </div>

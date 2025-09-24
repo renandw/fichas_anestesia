@@ -16,21 +16,21 @@ const PreAnestheticSheet = ({
         if (name || code) document.title = `Ficha Pré Anestesica - ${name} - ${code}`;
         return () => { document.title = prev; };
         }, [data?.patient?.patientName, data?.surgery?.code]);  
-
+        console.log('🟢 PreAnestheticSheet renderizando');
   // Helper para renderizar listas de checkboxes marcados
   const renderCheckedList = (obj, otherText, labelMap = {}) => {
     if (!obj || typeof obj !== 'object') return null;
-
-    const checkedKeys = Object.keys(obj).filter(k => obj[k] && k !== 'none');
-
+  
+    const checkedKeys = Object.keys(obj).filter(k => obj[k] && k !== 'none' && !k.endsWith('Other'));
+  
     if (obj.none && checkedKeys.length === 0) return labelMap.none || 'Sem alterações';
     const translated = checkedKeys.map(k => labelMap[k] || k);
     let result = translated.join(', ');
-
+  
     if (otherText && otherText.trim()) {
       result = result ? result + ', ' + otherText : otherText;
     }
-
+  
     return result || null;
   };
 
@@ -279,15 +279,15 @@ const PreAnestheticSheet = ({
 
   const Comorbidities = () => {
     const systems = [
-      ['Cardiovascular', preAnesthesia?.cardiovascular, preAnesthesia?.cardiovascularOther, LABELS.cardiovascular],
-      ['Respiratório', preAnesthesia?.respiratory, preAnesthesia?.respiratoryOther, LABELS.respiratory],
-      ['Endócrino', preAnesthesia?.endocrine, preAnesthesia?.endocrineOther, LABELS.endocrine],
-      ['Neurológico', preAnesthesia?.neurologic, preAnesthesia?.neurologicOther, LABELS.neurologic],
-      ['Digestivo', preAnesthesia?.digestive, preAnesthesia?.digestiveOther, LABELS.digestive],
-      ['Hematológico', preAnesthesia?.hematologic, preAnesthesia?.hematologicOther, LABELS.hematologic],
-      ['Osteomuscular', preAnesthesia?.musculoskeletal, preAnesthesia?.musculoskeletalOther, LABELS.musculoskeletal],
-      ['Geniturinário', preAnesthesia?.genitourinary, preAnesthesia?.genitourinaryOther, LABELS.genitourinary],
-      ['Genética', preAnesthesia?.geneticSyndromes, preAnesthesia?.geneticSyndromeOther, LABELS.geneticSyndromes]
+      ['Cardiovascular', preAnesthesia?.cardiovascular, preAnesthesia?.cardiovascular?.cardiovascularOther ?? preAnesthesia?.cardiovascularOther, LABELS.cardiovascular],
+      ['Respiratório', preAnesthesia?.respiratory, preAnesthesia?.respiratory?.respiratoryOther ?? preAnesthesia?.respiratoryOther, LABELS.respiratory],
+      ['Endócrino', preAnesthesia?.endocrine, preAnesthesia?.endocrine?.endocrineOther ?? preAnesthesia?.endocrineOther, LABELS.endocrine],
+      ['Neurológico', preAnesthesia?.neurologic, preAnesthesia?.neurologic?.neurologicOther ?? preAnesthesia?.neurologicOther, LABELS.neurologic],
+      ['Digestivo', preAnesthesia?.digestive, preAnesthesia?.digestive?.digestiveOther ?? preAnesthesia?.digestiveOther, LABELS.digestive],
+      ['Hematológico', preAnesthesia?.hematologic, preAnesthesia?.hematologic?.hematologicOther ?? preAnesthesia?.hematologicOther, LABELS.hematologic],
+      ['Osteomuscular', preAnesthesia?.musculoskeletal, preAnesthesia?.musculoskeletal?.musculoskeletalOther ?? preAnesthesia?.musculoskeletalOther, LABELS.musculoskeletal],
+      ['Genitourinário', preAnesthesia?.genitourinary, preAnesthesia?.genitourinary?.genitourinaryOther ?? preAnesthesia?.genitourinaryOther, LABELS.genitourinary],
+      ['Genética', preAnesthesia?.geneticSyndromes, preAnesthesia?.geneticSyndromes?.geneticSyndromeOther ?? preAnesthesia?.geneticSyndromeOther, LABELS.geneticSyndromes]
     ];
 
     const hasComorbidities = systems.some(([, obj, other, labelMap]) => {
@@ -507,7 +507,7 @@ const PreAnestheticSheet = ({
   );
 
   return (
-    <div className="w-[200mm] h-[287mm] p-[10mm] bg-white overflow-hidden">
+    <div className="preanesthesia-container w-[200mm] h-[287mm] p-[10mm] bg-white overflow-hidden print:h-auto print:w-auto print:max-w-none print:overflow-visible">
       {/* CABEÇALHO */}
       <Header />
 

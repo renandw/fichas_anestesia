@@ -1,23 +1,45 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 
+let __PRINT_HOST__ = null; // singleton host div reused across mounts
+const getPrintHost = () => {
+  if (__PRINT_HOST__ && document.body.contains(__PRINT_HOST__)) return __PRINT_HOST__;
+  const el = document.createElement('div');
+  el.id = 'print-container-host';
+  __PRINT_HOST__ = el;
+  return __PRINT_HOST__;
+};
+
 const PrintContainer = ({ children }) => {
-  const [host] = React.useState(() => document.createElement('div'));
+  const [host] = React.useState(getPrintHost);
 
   React.useEffect(() => {
     host.className = 'print-version';
-    // Mantém montado e mensurável fora da tela (sem display:none)
-    host.style.position = 'absolute';
-    host.style.left = '-99999px';
-    host.style.top = '0';
-    host.style.width = '210mm';     // largura alvo de A4
-    host.style.pointerEvents = 'none';
-    document.body.appendChild(host);
-    
-    return () => {
-      if (document.body.contains(host)) {
-        document.body.removeChild(host);
+    host.setAttribute('data-print-active', 'true');
+
+    // Desativa e remove quaisquer outros contêineres de impressão órfãos
+    document.querySelectorAll('.print-version, [id^="print-container-"]').forEach(el => {
+      if (el !== host) {
+        el.setAttribute && el.setAttribute('data-print-active', 'false');
+        if (el.id && el.id !== 'print-container-host' && document.body.contains(el)) {
+          document.body.removeChild(el);
+        }
       }
+    });
+
+    // Garante que o singleton esteja anexado apenas uma vez
+    if (!document.body.contains(host)) {
+      host.style.position = 'absolute';
+      host.style.left = '-99999px';
+      host.style.top = '0';
+      host.style.width = '210mm';
+      host.style.pointerEvents = 'none';
+      document.body.appendChild(host);
+    }
+
+    return () => {
+      // Não remove o host; apenas marca como inativo para impedir duplicidade
+      host.setAttribute('data-print-active', 'false');
     };
   }, [host]);
 
@@ -49,9 +71,17 @@ const PrintContainer = ({ children }) => {
     background: white !important;
   }
 
-  /* Esconde todos os irmãos diretos do portal para não gerar páginas extras */
+  /* Esconde tudo exceto contêineres de impressão */
   body > *:not(.print-version) {
     display: none !important;
+  }
+
+  /* Garante que apenas o contêiner de impressão ATIVO apareça */
+  .print-version { 
+    display: none !important;
+  }
+  .print-version[data-print-active="true"] {
+    display: block !important;
   }
 
   /* Traz o container do portal para o fluxo na impressão */
@@ -59,7 +89,6 @@ const PrintContainer = ({ children }) => {
     position: static !important;
     left: auto !important;
     top: auto !important;
-    display: block !important; 
     width: 210mm !important;
     height: auto !important;
     overflow: hidden !important;

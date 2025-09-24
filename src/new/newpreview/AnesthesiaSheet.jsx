@@ -20,6 +20,7 @@ const AnesthesiaSheet = ({
   normalizeCbhpmProcedures
 }) => {
 
+  console.log('🔵 AnesthesiaSheet renderizando');
   // Helper: garante que valores tipo {name: "..."} ou arrays virem string segura para JSX
   const asText = (v) => {
     if (v == null) return '';
@@ -268,29 +269,10 @@ const AnesthesiaSheet = ({
     </div>
   );
 
-  const printStyles = `
-  @media print {
-    .anesthesia-container {
-      width: auto !important;
-      height: auto !important;
-      max-width: none !important;
-      overflow: visible !important;
-      background: white !important;
-      margin: 0 !important;
-      padding: 10mm !important;
-    }
-    
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-  }
-`;
 
   return (
     <>
-    <style>{printStyles}</style>
-    <div className="anesthesia-container w-[200mm] h-[287mm] p-[10mm] bg-white overflow-hidden">
+    <div className="anesthesia-container w-[200mm] h-[287mm] p-[10mm] bg-white overflow-hidden print:h-auto print:w-auto print:max-w-none print:overflow-visible">
       {/* CABEÇALHO */}
       <Header />
 
